@@ -11,7 +11,7 @@ const buttonVariants = cva(
         default:
           "bg-color-accent-rose text-white hover:bg-color-accent-rose-deep shadow-md hover:shadow-lg",
         destructive:
-          "bg-red-500 text-white hover:bg-red-600 shadow-md hover:shadow-lg",
+          "bg-red-600 text-white hover:bg-red-700 shadow-md hover:shadow-lg",
         outline:
           "border border-color-line bg-color-surface hover:bg-color-line-soft",
         secondary:

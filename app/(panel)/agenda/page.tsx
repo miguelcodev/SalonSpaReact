@@ -1,27 +1,40 @@
-import { createClient } from "@/lib/supabase/server";
+import { Suspense } from "react";
+import { AgendaDateNav } from "./_components/agenda-date-nav";
+import { AgendaGrid } from "./_components/agenda-grid";
 
-export default async function AgendaPage() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
+interface AgendaPageProps {
+  searchParams: Promise<{ date?: string }>;
+}
+
+export default async function AgendaPage({ searchParams }: AgendaPageProps) {
+  const params = await searchParams;
+  const dateISO = params.date || "2026-07-16"; // Default to seed data date
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-serif font-semibold text-color-ink">
             Agenda de citas
           </h1>
           <p className="text-color-ink-soft mt-2">
-            Próximamente: grid de especialistas, navegación de fechas, y gestión de citas.
+            Gestiona las citas del salón por especialista y horario
           </p>
         </div>
-
-        <div className="bg-color-surface rounded-lg border border-color-line p-6">
-          <p className="text-color-ink-soft text-sm">
-            Sesión activa como: <strong>{data.user?.email}</strong>
-          </p>
-        </div>
+        <AgendaDateNav />
       </div>
+
+      {/* Grid */}
+      <Suspense
+        fallback={
+          <div className="bg-color-surface rounded-2xl border border-color-line p-12 text-center text-color-ink-soft">
+            Cargando agenda...
+          </div>
+        }
+      >
+        <AgendaGrid dateISO={dateISO} />
+      </Suspense>
     </div>
   );
 }
