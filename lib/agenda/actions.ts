@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentSalonId } from "@/lib/supabase/session";
 import {
   newAppointmentSchema,
   comboAppointmentSchema,
@@ -48,10 +49,14 @@ export async function createAppointment(input: NewAppointmentInput): Promise<
       startDate.getTime() + service.duration_minutes * 60 * 1000
     );
 
-    // Insert the appointment
+    // Insert the appointment. salon_id must be set explicitly — Postgres
+    // has no default/trigger for it, and RLS only filters reads/writes to
+    // rows that already have the right salon_id, it doesn't populate it.
+    const salonId = await getCurrentSalonId();
     const { data, error: insertError } = await supabase
       .from("appointments")
       .insert({
+        salon_id: salonId,
         client_id: clientId,
         service_id: serviceId,
         staff_id: staffId,
@@ -102,8 +107,9 @@ export async function createComboAppointment(input: ComboAppointmentInput): Prom
   try {
     // Call the Postgres function fn_create_combo_appointments
     // which handles atomicity and validation
+    const salonId = await getCurrentSalonId();
     const { data, error } = await supabase.rpc("fn_create_combo_appointments", {
-      p_salon_id: (await supabase.auth.getUser()).data.user?.id || null, // Will be fetched from RLS
+      p_salon_id: salonId,
       p_client_id: clientId,
       p_combo_id: comboId,
       p_items: items.map((item) => ({

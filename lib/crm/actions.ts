@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentSalonId } from "@/lib/supabase/session";
 import { newClientSchema, type NewClientInput } from "./schemas";
 
 export async function addClient(
@@ -13,10 +14,12 @@ export async function addClient(
   }
 
   const supabase = await createSupabaseClient();
+  const salonId = await getCurrentSalonId();
 
   const { data, error } = await supabase
     .from("clients")
     .insert({
+      salon_id: salonId,
       name: parsed.data.name,
       phone: parsed.data.phone || null,
       email: parsed.data.email || null,
