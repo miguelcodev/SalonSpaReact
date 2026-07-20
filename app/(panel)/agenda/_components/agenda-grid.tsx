@@ -93,7 +93,7 @@ export async function AgendaGrid({ dateISO }: AgendaGridProps) {
               {hourSlots.map((slot, slotIndex) => (
                 <div key={slot.hour}>
                   {/* Hour label */}
-                  <div className="h-16 border-b border-r border-color-line-soft px-2 py-1 text-right bg-color-line-soft text-xs text-color-ink-faint font-mono font-semibold">
+                  <div className="h-20 border-b border-r border-color-line-soft px-2 py-1 text-right bg-color-line-soft text-xs text-color-ink-faint font-mono font-semibold flex items-start justify-end">
                     {slot.label}
                   </div>
 
@@ -107,22 +107,30 @@ export async function AgendaGrid({ dateISO }: AgendaGridProps) {
                         new Date(a.start_time).getHours() === slot.hour
                     );
 
+                    // An appointment longer than 1h occupies later slots too,
+                    // but computeOccupiedCells only marks them "appt" — it
+                    // doesn't repeat the appointment object. Without this
+                    // branch those continuation cells fell through to
+                    // "empty" and rendered as bookable, hiding an ongoing
+                    // appointment and risking a double-booking attempt.
+                    const cellType = appointment
+                      ? "appt"
+                      : occupiedType === "buffer"
+                        ? "buffer"
+                        : occupiedType === "appt"
+                          ? "appt-continuation"
+                          : "empty";
+
                     return (
                       <div
                         key={cellKey}
-                        className="h-16 border-b border-r border-color-line-soft p-1"
+                        className="h-20 border-b border-r border-color-line-soft p-1"
                       >
                         <AgendaGridCell
                           staffId={s.id}
                           slotHour={slot.hour}
                           appointment={appointment}
-                          type={
-                            appointment
-                              ? "appt"
-                              : occupiedType === "buffer"
-                                ? "buffer"
-                                : "empty"
-                          }
+                          type={cellType}
                         />
                       </div>
                     );
