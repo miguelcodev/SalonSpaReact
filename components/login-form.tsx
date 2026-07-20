@@ -7,17 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signInWithPassword } from "@/lib/auth/actions";
 
+interface LoginFormValues {
+  email: string;
+  password: string;
+}
+
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { register, handleSubmit } = useForm({
+  const { register, handleSubmit } = useForm<LoginFormValues>({
     defaultValues: {
       email: "admin@bellamora.test",
       password: "BellamoraTest#2026",
     },
   });
 
-  async function onSubmit(formData: any) {
+  async function onSubmit(formData: LoginFormValues) {
     setIsLoading(true);
     setError(null);
 

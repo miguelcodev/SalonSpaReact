@@ -3,7 +3,6 @@ import type {
   Staff,
   Service,
   ServiceCategory,
-  ServiceStaffPrice,
   Client,
 } from "@/types/database";
 
@@ -13,7 +12,7 @@ export interface AppointmentWithRelations extends Appointment {
   staff: Staff;
 }
 
-export interface StaffColumn extends Staff {}
+export type StaffColumn = Staff;
 
 export interface HourSlot {
   hour: number;

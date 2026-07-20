@@ -1,5 +1,6 @@
 "use server";
 
+import { fromZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import type {
   AppointmentWithRelations,
@@ -100,11 +101,17 @@ export async function getStaffPricesForService(
     return [];
   }
 
-  return data
-    .filter((row: any) => row.staff?.active) // Only active staff
-    .map((row: any) => ({
+  type StaffPriceRow = {
+    staff_id: string;
+    price_cents: number;
+    staff: { name: string; active: boolean } | null;
+  };
+
+  return (data as unknown as StaffPriceRow[])
+    .filter((row) => row.staff?.active) // Only active staff
+    .map((row) => ({
       staff_id: row.staff_id,
-      staff_name: row.staff.name,
+      staff_name: row.staff!.name,
       price_cents: row.price_cents,
     }));
 }
@@ -130,21 +137,11 @@ export async function getAppointmentsForDay(
 
   const timezone = salonData?.timezone || "America/Lima";
 
-  // Parse the date in the salon's timezone
-  // E.g., "2026-07-16" in Lima time = [00:00, 23:59:59.999] in Lima, which is UTC-5
-  // So 2026-07-16 00:00 Lima = 2026-07-16 05:00 UTC
-  //    2026-07-16 23:59:59 Lima = 2026-07-17 04:59:59 UTC
-
-  // For simplicity, we construct the range in UTC manually:
-  // Lima (UTC-5): take [date 00:00 to date 23:59:59]
-  // Convert to UTC: add 5 hours to both boundaries
-  const [year, month, day] = dateISO.split("-").map(Number);
-  const startLima = new Date(year, month - 1, day, 0, 0, 0);
-  const endLima = new Date(year, month - 1, day, 23, 59, 59, 999);
-
-  // UTC time: add 5 hours (Lima is UTC-5)
-  const startUTC = new Date(startLima.getTime() + 5 * 60 * 60 * 1000);
-  const endUTC = new Date(endLima.getTime() + 5 * 60 * 60 * 1000);
+  // dateISO is a civil date ("2026-07-16"), interpreted in the salon's
+  // timezone — never assume a fixed UTC offset (fromZonedTime resolves DST
+  // correctly for timezones that observe it, even though Lima doesn't).
+  const startUTC = fromZonedTime(`${dateISO}T00:00:00`, timezone);
+  const endUTC = fromZonedTime(`${dateISO}T23:59:59.999`, timezone);
 
   const { data, error } = await supabase
     .from("appointments")

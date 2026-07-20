@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useState, useEffect, Suspense } from "react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,28 +11,32 @@ import { useModal } from "./agenda-modal-context";
 import { newAppointmentSchema } from "@/lib/agenda/schemas";
 import { createAppointment } from "@/lib/agenda/actions";
 import type { NewAppointmentInput } from "@/lib/agenda/schemas";
-import { getServicesForNewAppointment, getStaffPricesForService, getStaffColumns } from "@/lib/agenda/queries";
-import { Suspense } from "react";
+import { getServicesForNewAppointment, getStaffPricesForService } from "@/lib/agenda/queries";
+import type { Service, ServiceCategory } from "@/types/database";
+import type { StaffPriceOption } from "@/lib/agenda/types";
 
 interface NewAppointmentModalProps {
   dateISO: string;
 }
 
+type ServiceWithCategory = Service & { category: ServiceCategory };
+
 function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
   const { newModal, closeNewModal } = useModal();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [services, setServices] = useState<any[]>([]);
-  const [staff, setStaff] = useState<any[]>([]);
-  const [serviceLoading, setServiceLoading] = useState(true);
+  const [services, setServices] = useState<ServiceWithCategory[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [staffPrices, setStaffPrices] = useState<StaffPriceOption[]>([]);
+  const [pricesLoading, setPricesLoading] = useState(false);
 
   const {
-    control,
     register,
     handleSubmit,
     watch,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<NewAppointmentInput>({
     resolver: zodResolver(newAppointmentSchema),
     defaultValues: {
@@ -45,16 +49,36 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
   });
 
   const selectedServiceId = watch("serviceId");
+  const selectedStaffId = watch("staffId");
   const selectedHour = newModal.selectedHour || 9;
 
-  // Load services on mount
-  useState(() => {
+  // Load services once on mount
+  useEffect(() => {
     getServicesForNewAppointment().then((s) => {
       setServices(s);
-      setServiceLoading(false);
+      setServicesLoading(false);
     });
-    getStaffColumns().then(setStaff);
-  });
+  }, []);
+
+  // Load staff pricing options whenever the selected service changes
+  // (only staff with a price entry for this service can be picked — mirrors
+  // the prototype's staffOptions per service).
+  useEffect(() => {
+    if (!selectedServiceId) {
+      setStaffPrices([]);
+      return;
+    }
+    setPricesLoading(true);
+    getStaffPricesForService(selectedServiceId).then((prices) => {
+      setStaffPrices(prices);
+      setPricesLoading(false);
+      // Reset staff selection if it's no longer a valid option for this service
+      if (!prices.some((p) => p.staff_id === selectedStaffId)) {
+        setValue("staffId", "");
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedServiceId]);
 
   async function onSubmit(data: NewAppointmentInput) {
     setIsLoading(true);
@@ -84,6 +108,9 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
   }
 
   const selectedService = services.find((s) => s.id === selectedServiceId);
+  const selectedPriceOption = staffPrices.find(
+    (p) => p.staff_id === selectedStaffId
+  );
 
   return (
     <div
@@ -138,7 +165,7 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
               <select
                 id="serviceId"
                 {...register("serviceId")}
-                disabled={serviceLoading || isLoading}
+                disabled={servicesLoading || isLoading}
                 className="w-full px-3 py-2 rounded-lg border border-color-line text-sm focus:border-color-accent-rose focus:outline-none"
               >
                 <option value="">Elige servicio</option>
@@ -165,15 +192,14 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
               >
                 {Array.from({ length: 11 }, (_, i) => i + 9).map((h) => (
                   <option key={h} value={h}>
-                    {h % 12 === 0 ? 12 : h % 12}:00{" "}
-                    {h >= 12 ? "pm" : "am"}
+                    {h % 12 === 0 ? 12 : h % 12}:00 {h >= 12 ? "pm" : "am"}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* Staff selector */}
+          {/* Staff selector — only staff with a price for the selected service */}
           <div>
             <Label htmlFor="staffId" className="block mb-2">
               Especialista (precio varía según nivel)
@@ -181,17 +207,17 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
             <select
               id="staffId"
               {...register("staffId")}
-              disabled={!selectedServiceId || isLoading}
+              disabled={!selectedServiceId || pricesLoading || isLoading}
               className="w-full px-3 py-2 rounded-lg border border-color-line text-sm focus:border-color-accent-rose focus:outline-none"
             >
-              <option value="">Elige especialista</option>
-              {selectedServiceId && (
-                staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))
-              )}
+              <option value="">
+                {pricesLoading ? "Cargando..." : "Elige especialista"}
+              </option>
+              {staffPrices.map((p) => (
+                <option key={p.staff_id} value={p.staff_id}>
+                  {p.staff_name} — S/ {(p.price_cents / 100).toFixed(2)}
+                </option>
+              ))}
             </select>
             {errors.staffId && (
               <p className="text-xs text-red-600 mt-1">{errors.staffId.message}</p>
@@ -202,12 +228,21 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
           {selectedService && (
             <div className="bg-color-bg border border-color-line rounded-lg p-3 text-sm">
               <p>
-                Durará <strong>{selectedService.duration_minutes} min</strong> + {" "}
-                <strong>{selectedService.buffer_minutes} min de limpieza</strong>
+                Durará <strong>{selectedService.duration_minutes} min</strong>{" "}
+                + <strong>{selectedService.buffer_minutes} min de limpieza</strong>
               </p>
-              <p className="mt-1">
-                Precio: <strong>S/ {(selectedService.price_cents / 100).toFixed(2)}</strong>
-              </p>
+              {selectedPriceOption ? (
+                <p className="mt-1">
+                  Precio con {selectedPriceOption.staff_name}:{" "}
+                  <strong>
+                    S/ {(selectedPriceOption.price_cents / 100).toFixed(2)}
+                  </strong>
+                </p>
+              ) : (
+                <p className="mt-1 text-color-ink-soft">
+                  Elige una especialista para ver el precio.
+                </p>
+              )}
             </div>
           )}
 
