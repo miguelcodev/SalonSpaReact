@@ -23,7 +23,12 @@ export async function getStaffColumns(): Promise<StaffColumn[]> {
     .order("name");
 
   if (error) {
-    console.error("Error fetching staff:", error);
+    console.error("Error fetching staff:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return [];
   }
 
@@ -42,7 +47,12 @@ export async function getServiceCategories(): Promise<ServiceCategory[]> {
     .order("name");
 
   if (error) {
-    console.error("Error fetching categories:", error);
+    console.error("Error fetching categories:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return [];
   }
 
@@ -69,7 +79,12 @@ export async function getServicesForNewAppointment(): Promise<
     .order("name");
 
   if (error) {
-    console.error("Error fetching services:", error);
+    console.error("Error fetching services:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return [];
   }
 
@@ -97,7 +112,12 @@ export async function getStaffPricesForService(
     .order("staff(name)");
 
   if (error) {
-    console.error("Error fetching staff prices:", error);
+    console.error("Error fetching staff prices:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return [];
   }
 
@@ -161,7 +181,12 @@ export async function getAppointmentsForDay(
     .order("start_time");
 
   if (error) {
-    console.error("Error fetching appointments:", error);
+    console.error("Error fetching appointments:", {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return [];
   }
 
