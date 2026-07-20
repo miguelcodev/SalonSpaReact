@@ -2,11 +2,25 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { signOut } from "@/lib/auth/actions";
 
+const ACTIVE_MODULES = [
+  { href: "/agenda", name: "Agenda de citas", color: "#C77B4B" },
+  { href: "/crm", name: "Clientes (CRM)", color: "#B8697A" },
+];
+
+const COMING_SOON_MODULES = [
+  { name: "Catálogo de servicios", color: "#C9A227" },
+  { name: "Promociones", color: "#C9A227" },
+  { name: "Mensajería WhatsApp", color: "#4C7A5A" },
+  { name: "Reportes", color: "#8D7B9E" },
+];
+
 export function Topbar() {
   const [navOpen, setNavOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <header className="bg-color-surface border-b border-color-line sticky top-0 z-10">
@@ -22,7 +36,9 @@ export function Topbar() {
                 Bellamora
               </div>
               <div className="text-xs text-color-ink-soft uppercase tracking-widest">
-                Agenda
+                {ACTIVE_MODULES.find((m) => pathname.startsWith(m.href))?.name.split(
+                  " ("
+                )[0] || "Panel"}
               </div>
             </div>
           </Link>
@@ -43,40 +59,29 @@ export function Topbar() {
             {navOpen && (
               <div className="absolute top-full left-0 mt-2 w-56 bg-color-surface border border-color-line rounded-2xl shadow-modal z-20 overflow-hidden">
                 <div className="py-2">
-                  <Link
-                    href="/agenda"
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-color-accent-rose hover:bg-red-50"
-                    onClick={() => setNavOpen(false)}
-                  >
-                    <div
-                      className="w-2 h-2 rounded"
-                      style={{ backgroundColor: "#C77B4B" }}
-                    ></div>
-                    <span>Agenda de citas</span>
-                  </Link>
+                  {ACTIVE_MODULES.map((module) => {
+                    const isActive = pathname.startsWith(module.href);
+                    return (
+                      <Link
+                        key={module.href}
+                        href={module.href}
+                        className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold hover:bg-red-50 ${
+                          isActive ? "text-color-accent-rose" : "text-color-ink"
+                        }`}
+                        onClick={() => setNavOpen(false)}
+                      >
+                        <div
+                          className="w-2 h-2 rounded"
+                          style={{ backgroundColor: module.color }}
+                        ></div>
+                        <span>{module.name}</span>
+                      </Link>
+                    );
+                  })}
 
-                  {[
-                    {
-                      name: "Clientes (CRM)",
-                      color: "#B8697A",
-                    },
-                    {
-                      name: "Catálogo de servicios",
-                      color: "#C9A227",
-                    },
-                    {
-                      name: "Promociones",
-                      color: "#C9A227",
-                    },
-                    {
-                      name: "Mensajería WhatsApp",
-                      color: "#4C7A5A",
-                    },
-                    {
-                      name: "Reportes",
-                      color: "#8D7B9E",
-                    },
-                  ].map((module) => (
+                  <div className="border-t border-color-line-soft my-2"></div>
+
+                  {COMING_SOON_MODULES.map((module) => (
                     <div
                       key={module.name}
                       className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-color-ink-faint opacity-50 cursor-not-allowed"

@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ClientPicker } from "@/components/client-picker";
 import { useModal } from "./agenda-modal-context";
 import { newAppointmentSchema } from "@/lib/agenda/schemas";
 import { createAppointment } from "@/lib/agenda/actions";
@@ -14,6 +14,7 @@ import type { NewAppointmentInput } from "@/lib/agenda/schemas";
 import { getServicesForNewAppointment, getStaffPricesForService } from "@/lib/agenda/queries";
 import type { Service, ServiceCategory } from "@/types/database";
 import type { StaffPriceOption } from "@/lib/agenda/types";
+import type { ClientSearchResult } from "@/lib/crm/types";
 
 interface NewAppointmentModalProps {
   dateISO: string;
@@ -140,20 +141,16 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
 
         {/* Body */}
         <form onSubmit={handleSubmit(onSubmit)} className="px-6 py-5 space-y-4">
-          {/* Client name */}
+          {/* Client picker — must resolve to a real clients.id (uuid) */}
           <div>
-            <Label htmlFor="clientId" className="block mb-2">
-              Clienta
-            </Label>
-            <Input
-              id="clientId"
-              placeholder="Nombre de la clienta"
-              {...register("clientId")}
+            <Label className="block mb-2">Clienta</Label>
+            <ClientPicker
+              onSelect={(client: ClientSearchResult) =>
+                setValue("clientId", client.id, { shouldValidate: true })
+              }
               disabled={isLoading}
+              error={errors.clientId?.message}
             />
-            {errors.clientId && (
-              <p className="text-xs text-red-600 mt-1">{errors.clientId.message}</p>
-            )}
           </div>
 
           {/* Service + Hour */}
