@@ -9,10 +9,10 @@ import { signOut } from "@/lib/auth/actions";
 const ACTIVE_MODULES = [
   { href: "/agenda", name: "Agenda de citas", color: "#C77B4B" },
   { href: "/crm", name: "Clientes (CRM)", color: "#B8697A" },
+  { href: "/catalogo", name: "Catálogo de servicios", color: "#C9A227" },
 ];
 
 const COMING_SOON_MODULES = [
-  { name: "Catálogo de servicios", color: "#C9A227" },
   { name: "Promociones", color: "#C9A227" },
   { name: "Mensajería WhatsApp", color: "#4C7A5A" },
   { name: "Reportes", color: "#8D7B9E" },
