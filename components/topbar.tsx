@@ -11,12 +11,10 @@ const ACTIVE_MODULES = [
   { href: "/crm", name: "Clientes (CRM)", color: "#B8697A" },
   { href: "/catalogo", name: "Catálogo de servicios", color: "#C9A227" },
   { href: "/promociones", name: "Promociones", color: "#C9A227" },
+  { href: "/reportes", name: "Reportes", color: "#8D7B9E" },
 ];
 
-const COMING_SOON_MODULES = [
-  { name: "Mensajería WhatsApp", color: "#4C7A5A" },
-  { name: "Reportes", color: "#8D7B9E" },
-];
+const COMING_SOON_MODULES = [{ name: "Mensajería WhatsApp", color: "#4C7A5A" }];
 
 export function Topbar() {
   const [navOpen, setNavOpen] = useState(false);
