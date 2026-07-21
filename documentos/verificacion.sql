@@ -214,6 +214,106 @@ begin
   perform set_config('role', 'postgres', true);
 end $$;
 
+-- ------------------------------------------------------------
+-- TEST 9 — fn_register_sale: venta simple de un producto, descuenta stock
+-- Peine de cerámica arranca en 2 unidades (seed.sql)
+-- ------------------------------------------------------------
+do $$
+declare v_sale_id uuid; v_stock_before int; v_stock_after int; v_items int;
+begin
+  select stock_quantity into v_stock_before
+  from products where id = '51000000-0000-0000-0000-000000000005';
+
+  v_sale_id := fn_register_sale(
+    'a0000000-0000-0000-0000-000000000001',
+    'f0000000-0000-0000-0000-000000000005',
+    null, 'tienda',
+    '[{"product_id":"51000000-0000-0000-0000-000000000005","quantity":1}]'::jsonb
+  );
+
+  select count(*) into v_items from sale_items where sale_id = v_sale_id;
+  if v_items <> 1 then
+    raise exception 'FALLO TEST 9a: se esperaba 1 sale_item, hay %', v_items;
+  end if;
+  raise notice 'OK TEST 9a: fn_register_sale creó la venta y su línea';
+
+  select stock_quantity into v_stock_after
+  from products where id = '51000000-0000-0000-0000-000000000005';
+  if v_stock_after <> v_stock_before - 1 then
+    raise exception 'FALLO TEST 9b: stock esperado %, quedó en %', v_stock_before - 1, v_stock_after;
+  end if;
+  raise notice 'OK TEST 9b: el trigger descontó el stock correctamente (% → %)', v_stock_before, v_stock_after;
+
+  -- limpieza: revertir la venta de prueba (borra sale_items y stock_movements por cascade)
+  delete from stock_movements where reference_sale_id = v_sale_id;
+  delete from sales where id = v_sale_id;
+  update products set stock_quantity = v_stock_before
+    where id = '51000000-0000-0000-0000-000000000005';
+end $$;
+
+-- ------------------------------------------------------------
+-- TEST 10 — fn_register_sale rechaza vender más stock del disponible
+-- Peine de cerámica tiene 2 unidades — pedir 999 debe fallar sin tocar nada
+-- ------------------------------------------------------------
+do $$
+declare v_stock_before int; v_stock_after int; v_sales_before int; v_sales_after int;
+begin
+  select stock_quantity into v_stock_before
+  from products where id = '51000000-0000-0000-0000-000000000005';
+  select count(*) into v_sales_before from sales;
+
+  begin
+    perform fn_register_sale(
+      'a0000000-0000-0000-0000-000000000001',
+      'f0000000-0000-0000-0000-000000000005',
+      null, 'tienda',
+      '[{"product_id":"51000000-0000-0000-0000-000000000005","quantity":999}]'::jsonb
+    );
+    raise exception 'FALLO TEST 10a: se permitió vender 999 unidades con solo % en stock', v_stock_before;
+  exception
+    when others then
+      raise notice 'OK TEST 10a: venta rechazada por stock insuficiente (%)', sqlerrm;
+  end;
+
+  select stock_quantity into v_stock_after
+  from products where id = '51000000-0000-0000-0000-000000000005';
+  select count(*) into v_sales_after from sales;
+
+  if v_stock_after <> v_stock_before or v_sales_after <> v_sales_before then
+    raise exception 'FALLO TEST 10b: la venta rechazada dejó rastro (stock % → %, sales % → %)',
+      v_stock_before, v_stock_after, v_sales_before, v_sales_after;
+  end if;
+  raise notice 'OK TEST 10b: rollback completo — ni stock ni sales quedaron afectados';
+end $$;
+
+-- ------------------------------------------------------------
+-- TEST 11 — Venta combinada: servicio de una cita + producto, un solo cobro
+-- ------------------------------------------------------------
+do $$
+declare v_sale_id uuid; v_total int; v_appt_price int;
+begin
+  select price_cents into v_appt_price
+  from appointments where id = '10000000-0000-0000-0000-000000000002'; -- Ana Beltrán, corte de puntas
+
+  v_sale_id := fn_register_sale(
+    'a0000000-0000-0000-0000-000000000001',
+    'f0000000-0000-0000-0000-000000000007',
+    '10000000-0000-0000-0000-000000000002', 'cita',
+    '[{"product_id":"51000000-0000-0000-0000-000000000004","quantity":1}]'::jsonb -- liga premium, S/15
+  );
+
+  select total_cents into v_total from sales where id = v_sale_id;
+  if v_total <> v_appt_price + 1500 then
+    raise exception 'FALLO TEST 11: total esperado % (servicio + producto), fue %', v_appt_price + 1500, v_total;
+  end if;
+  raise notice 'OK TEST 11: una venta combina el precio del servicio (%) + producto en un solo total (%)', v_appt_price, v_total;
+
+  delete from stock_movements where reference_sale_id = v_sale_id;
+  delete from sales where id = v_sale_id;
+  update products set stock_quantity = stock_quantity + 1
+    where id = '51000000-0000-0000-0000-000000000004';
+end $$;
+
 -- ============================================================
 -- Si todos los NOTICE dicen OK, el backend está listo para
 -- construir la app Next.js encima.

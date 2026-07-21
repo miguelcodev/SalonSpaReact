@@ -25,6 +25,18 @@ export interface ClientCreatedRow {
   created_at: string;
 }
 
+/** A sale_item row with its parent sale's status/date denormalized —
+ * subtotal_cents is product revenue only (never the linked appointment's
+ * price, which is already counted separately from `appointments`), so
+ * summing this alongside appointment revenue never double-counts. */
+export interface RawSaleItemRow {
+  sale_created_at: string;
+  sale_status: string;
+  product_name: string;
+  category_color: string | null;
+  subtotal_cents: number;
+}
+
 export interface RevenueBucket {
   label: string;
   revenueCents: number;
@@ -56,11 +68,14 @@ export interface PeriodDelta {
 export interface ReportData {
   rangeLabel: string;
   totalRevenueCents: number;
+  serviceRevenueCents: number;
+  productRevenueCents: number;
   avgTicketCents: number;
   occupancyPct: number;
   noShowRatePct: number;
   revenueByBucket: RevenueBucket[];
   topServices: TopServiceEntry[];
+  topProducts: TopServiceEntry[];
   staffPerformance: StaffPerformanceEntry[];
   newClientCount: number;
   recurringClientCount: number;

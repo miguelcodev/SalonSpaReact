@@ -1,12 +1,16 @@
 import { formatMoney } from "@/lib/reportes/format";
 import type { TopServiceEntry } from "@/lib/reportes/types";
 
-export function TopServicesList({ services }: { services: TopServiceEntry[] }) {
+export function TopServicesList({
+  services,
+  emptyMessage = "Sin servicios completados en este período.",
+}: {
+  services: TopServiceEntry[];
+  emptyMessage?: string;
+}) {
   if (services.length === 0) {
     return (
-      <p className="text-sm text-color-ink-faint py-6 text-center">
-        Sin servicios completados en este período.
-      </p>
+      <p className="text-sm text-color-ink-faint py-6 text-center">{emptyMessage}</p>
     );
   }
 

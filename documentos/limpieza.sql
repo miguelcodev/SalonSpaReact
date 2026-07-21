@@ -25,6 +25,11 @@ drop view if exists view_staff_performance      cascade;
 --    índices y cualquier FK que quede)
 -- ------------------------------------------------------------
 drop table if exists payments               cascade;
+drop table if exists stock_movements        cascade;
+drop table if exists sale_items             cascade;
+drop table if exists sales                  cascade;
+drop table if exists products               cascade;
+drop table if exists product_categories     cascade;
 drop table if exists whatsapp_messages      cascade;
 drop table if exists message_queue          cascade;
 drop table if exists automation_rules       cascade;
@@ -49,7 +54,9 @@ drop table if exists salons                 cascade;
 drop function if exists fn_current_salon_id()                              cascade;
 drop function if exists fn_is_slot_free(uuid, timestamptz, timestamptz, int, uuid) cascade;
 drop function if exists fn_create_combo_appointments(uuid, uuid, uuid, jsonb)      cascade;
+drop function if exists fn_register_sale(uuid, uuid, uuid, text, jsonb, int, uuid) cascade;
 drop function if exists fn_update_client_stats()                           cascade;
+drop function if exists fn_update_product_stock()                         cascade;
 drop function if exists fn_touch_updated_at()                              cascade;
 
 -- ------------------------------------------------------------
@@ -69,5 +76,6 @@ where table_schema = 'public'
     'service_staff_prices','combos','combo_services','clients',
     'appointments','promotions','promotion_redemptions',
     'loyalty_programs','loyalty_progress','automation_rules',
-    'message_queue','whatsapp_messages','payments'
+    'message_queue','whatsapp_messages','payments',
+    'product_categories','products','sales','sale_items','stock_movements'
   );

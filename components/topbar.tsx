@@ -10,6 +10,8 @@ const ACTIVE_MODULES = [
   { href: "/agenda", name: "Agenda de citas", color: "#C77B4B" },
   { href: "/crm", name: "Clientes (CRM)", color: "#B8697A" },
   { href: "/catalogo", name: "Catálogo de servicios", color: "#C9A227" },
+  { href: "/productos", name: "Productos", color: "#7C9070" },
+  { href: "/ventas", name: "Ventas", color: "#9A4F60" },
   { href: "/promociones", name: "Promociones", color: "#C9A227" },
   { href: "/whatsapp", name: "Mensajería WhatsApp", color: "#4C7A5A" },
   { href: "/reportes", name: "Reportes", color: "#8D7B9E" },

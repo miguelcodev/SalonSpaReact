@@ -2,8 +2,37 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getRangeBounds, getPreviousRangeBounds, buildReportData } from "./compute";
-import type { ReportRange, RawAppointmentRow, StaffRow, ClientCreatedRow } from "./types";
+import type {
+  ReportRange,
+  RawAppointmentRow,
+  RawSaleItemRow,
+  StaffRow,
+  ClientCreatedRow,
+} from "./types";
 import type { ReportData } from "./types";
+
+const SALE_ITEM_SELECT = `subtotal_cents,
+  product:products (name, category:product_categories (color_hex)),
+  sale:sales!inner (created_at, status)
+`;
+
+type SaleItemRow = {
+  subtotal_cents: number;
+  product: { name: string; category: { color_hex: string | null } | null } | null;
+  sale: { created_at: string; status: string } | null;
+};
+
+function mapSaleItemRows(rows: SaleItemRow[]): RawSaleItemRow[] {
+  return rows
+    .filter((r) => r.sale !== null)
+    .map((r) => ({
+      sale_created_at: r.sale!.created_at,
+      sale_status: r.sale!.status,
+      product_name: r.product?.name ?? "Producto eliminado",
+      category_color: r.product?.category?.color_hex ?? null,
+      subtotal_cents: r.subtotal_cents,
+    }));
+}
 
 const APPOINTMENT_SELECT = `id,
   start_time,
@@ -56,7 +85,14 @@ export async function getReportData(range: ReportRange): Promise<ReportData> {
   const bounds = getRangeBounds(range, timezone);
   const prevBounds = getPreviousRangeBounds(bounds);
 
-  const [appointmentsRes, prevAppointmentsRes, staffRes, clientsRes] = await Promise.all([
+  const [
+    appointmentsRes,
+    prevAppointmentsRes,
+    saleItemsRes,
+    prevSaleItemsRes,
+    staffRes,
+    clientsRes,
+  ] = await Promise.all([
     supabase
       .from("appointments")
       .select(APPOINTMENT_SELECT)
@@ -67,6 +103,16 @@ export async function getReportData(range: ReportRange): Promise<ReportData> {
       .select(APPOINTMENT_SELECT)
       .gte("start_time", prevBounds.start.toISOString())
       .lte("start_time", prevBounds.end.toISOString()),
+    supabase
+      .from("sale_items")
+      .select(SALE_ITEM_SELECT)
+      .gte("sale.created_at", bounds.start.toISOString())
+      .lte("sale.created_at", bounds.end.toISOString()),
+    supabase
+      .from("sale_items")
+      .select(SALE_ITEM_SELECT)
+      .gte("sale.created_at", prevBounds.start.toISOString())
+      .lte("sale.created_at", prevBounds.end.toISOString()),
     supabase.from("staff").select("id, name, level, color_hex").eq("active", true),
     supabase.from("clients").select("id, created_at"),
   ]);
@@ -76,6 +122,12 @@ export async function getReportData(range: ReportRange): Promise<ReportData> {
   }
   if (prevAppointmentsRes.error) {
     console.error("Error fetching previous period appointments:", prevAppointmentsRes.error);
+  }
+  if (saleItemsRes.error) {
+    console.error("Error fetching report sale items:", saleItemsRes.error);
+  }
+  if (prevSaleItemsRes.error) {
+    console.error("Error fetching previous period sale items:", prevSaleItemsRes.error);
   }
   if (staffRes.error) {
     console.error("Error fetching report staff:", staffRes.error);
@@ -90,6 +142,10 @@ export async function getReportData(range: ReportRange): Promise<ReportData> {
   const previousAppointments = mapAppointmentRows(
     (prevAppointmentsRes.data as unknown as AppointmentRow[]) || []
   );
+  const saleItems = mapSaleItemRows((saleItemsRes.data as unknown as SaleItemRow[]) || []);
+  const previousSaleItems = mapSaleItemRows(
+    (prevSaleItemsRes.data as unknown as SaleItemRow[]) || []
+  );
 
   const staff: StaffRow[] = staffRes.data || [];
   const clients: ClientCreatedRow[] = clientsRes.data || [];
@@ -98,9 +154,11 @@ export async function getReportData(range: ReportRange): Promise<ReportData> {
     range,
     bounds,
     appointments,
+    saleItems,
     staff,
     clients,
     timezone,
-    previousAppointments
+    previousAppointments,
+    previousSaleItems
   );
 }

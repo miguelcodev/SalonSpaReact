@@ -42,7 +42,7 @@ export default async function ReportesPage({ searchParams }: ReportesPageProps) 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           value={formatMoney(data.totalRevenueCents)}
-          label={`Ingresos · ${data.rangeLabel.toLowerCase()}`}
+          label={`Ingresos · ${data.rangeLabel.toLowerCase()} · servicios ${formatMoney(data.serviceRevenueCents)} + productos ${formatMoney(data.productRevenueCents)}`}
           delta={data.deltas.revenue}
           upIsGood
         />
@@ -88,8 +88,8 @@ export default async function ReportesPage({ searchParams }: ReportesPageProps) 
         </div>
       </div>
 
-      {/* Top services + staff performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-5 items-start">
+      {/* Top services + top products */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
         <div className="bg-color-surface border border-color-line rounded-2xl shadow-card p-6">
           <h2 className="text-base font-serif font-semibold text-color-ink">
             Servicios más vendidos
@@ -102,13 +102,27 @@ export default async function ReportesPage({ searchParams }: ReportesPageProps) 
 
         <div className="bg-color-surface border border-color-line rounded-2xl shadow-card p-6">
           <h2 className="text-base font-serif font-semibold text-color-ink">
-            Desempeño por especialista
+            Productos más vendidos
           </h2>
-          <p className="text-xs text-color-ink-soft mb-3">
-            Ocupación (aprox.) e ingresos generados
+          <p className="text-xs text-color-ink-soft mb-2">
+            Por ingresos generados · {data.rangeLabel.toLowerCase()}
           </p>
-          <StaffPerformanceTable staff={data.staffPerformance} />
+          <TopServicesList
+            services={data.topProducts}
+            emptyMessage="Sin productos vendidos en este período."
+          />
         </div>
+      </div>
+
+      {/* Staff performance */}
+      <div className="bg-color-surface border border-color-line rounded-2xl shadow-card p-6">
+        <h2 className="text-base font-serif font-semibold text-color-ink">
+          Desempeño por especialista
+        </h2>
+        <p className="text-xs text-color-ink-soft mb-3">
+          Ocupación (aprox.) e ingresos generados por servicios
+        </p>
+        <StaffPerformanceTable staff={data.staffPerformance} />
       </div>
     </div>
   );

@@ -65,6 +65,15 @@ Tras revisar la arquitectura contra `schema.sql`, se corrigió el schema y se ce
 - **Cancelar una cita limpia su cola pendiente.** Sin esto, cancelar no evita que salga un recordatorio para una cita que ya no existe.
 - **El endpoint de cron se protege con `CRON_SECRET`**, el patrón estándar de Vercel Cron Jobs (`Authorization: Bearer $CRON_SECRET`) — sin este secreto configurado, el endpoint rechaza todo por defecto.
 
+## Decisiones cerradas al implementar Productos y Ventas — cobranza (2026-07-21)
+
+- **Sin facturación electrónica SUNAT.** Solo un recibo interno (HTML imprimible en `/ventas/[id]`), etiquetado explícitamente "no es comprobante de pago SUNAT". Integrar un PSE (Nubefact u otro) queda documentado como fase aparte — requiere RUC del salón y credenciales de un proveedor certificado.
+- **`payments` dejó de colgar de una cita.** Se introdujo `sales` como la unidad real de cobranza: `payments.sale_id` reemplaza a `payments.appointment_id` (que era `not null`, forzando 1 pago = 1 cita, sin lugar para productos). Una `sales` row puede tener `appointment_id` (el servicio que se cobra), cero o más `sale_items` (productos), o ambos — así "servicio + 2 productos" es un solo cobro, no dos registros sueltos. Se hizo ahora porque todavía no existía ninguna UI de cobro construida (solo 5 filas de seed dependían del shape viejo) — más adelante habría sido una migración con datos reales de por medio.
+- **Stock nunca se muta directo.** `products.stock_quantity` se deriva de `stock_movements` (ledger de entrada/salida) vía trigger, mismo patrón que `clients.visit_count` se deriva de `appointments`. Da auditoría completa (reposición, merma, venta) en vez de solo un número final.
+- **`fn_register_sale` bloquea con `for update` antes de vender.** Mismo problema de condición de carrera que `no_overlap` resuelve para citas (dos cobros concurrentes del mismo producto), resuelto aquí con un lock de fila porque es una cantidad acumulada, no un rango de tiempo — una exclusion constraint no aplica.
+- **Ingresos por producto se suman vía `sale_items`, nunca vía `sales.total_cents`.** `sales.total_cents` de una venta vinculada a una cita YA incluye el precio del servicio (para que el cobro sea uno solo) — sumarlo de nuevo junto con `appointments.price_cents` habría contado el servicio dos veces en Reportes. `sale_items.subtotal_cents` es siempre solo la parte de productos, así que sumarlo aparte no tiene ese riesgo.
+- **Pedido por WhatsApp = registro manual con `channel = 'whatsapp'`.** No se conecta al webhook de mensajes entrantes (fuera de alcance del módulo de Mensajería) — es la recepcionista registrando la venta, igual que una venta en tienda.
+
 ## Siguiente paso
 
 Este documento, junto con `modelo-de-datos.md`, `schema.sql`, `seed.sql` y los 6 prototipos HTML, es el contexto que se le pasa a Claude Code para levantar el proyecto Next.js real.

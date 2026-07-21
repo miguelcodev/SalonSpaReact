@@ -3,6 +3,7 @@ import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import type {
   ReportRange,
   RawAppointmentRow,
+  RawSaleItemRow,
   StaffRow,
   ClientCreatedRow,
   RevenueBucket,
@@ -84,27 +85,38 @@ function bucketLabel(range: ReportRange, date: Date): string {
   return date.toLocaleDateString("es-PE", { day: "2-digit", month: "short" });
 }
 
-/** Buckets completed appointments' revenue by day (7d range) or by week
- * relative to the range start (month/quarter range). */
+/** Buckets completed appointments' + paid product sales' revenue by day (7d
+ * range) or by week relative to the range start (month/quarter range). */
 export function bucketRevenue(
   appointments: RawAppointmentRow[],
+  saleItems: RawSaleItemRow[],
   range: ReportRange,
   rangeStart: Date,
   timezone: string
 ): RevenueBucket[] {
   const completed = appointments.filter((a) => a.status === "completada");
+  const paidItems = saleItems.filter((s) => s.sale_status === "pagado");
   const bucketSizeDays = range === "7d" ? 1 : 7;
   const buckets = new Map<number, number>(); // bucket index -> revenue cents
 
-  completed.forEach((a) => {
+  function bucketIndexFor(dateISO: string): number {
     const zonedStart = toZonedTime(rangeStart, timezone);
-    const zonedApptDate = toZonedTime(new Date(a.start_time), timezone);
+    const zonedDate = toZonedTime(new Date(dateISO), timezone);
     const dayOffset = differenceInCalendarDays(
-      new Date(zonedApptDate.getFullYear(), zonedApptDate.getMonth(), zonedApptDate.getDate()),
+      new Date(zonedDate.getFullYear(), zonedDate.getMonth(), zonedDate.getDate()),
       new Date(zonedStart.getFullYear(), zonedStart.getMonth(), zonedStart.getDate())
     );
-    const bucketIndex = Math.floor(dayOffset / bucketSizeDays);
-    buckets.set(bucketIndex, (buckets.get(bucketIndex) || 0) + a.price_cents);
+    return Math.floor(dayOffset / bucketSizeDays);
+  }
+
+  completed.forEach((a) => {
+    const idx = bucketIndexFor(a.start_time);
+    buckets.set(idx, (buckets.get(idx) || 0) + a.price_cents);
+  });
+
+  paidItems.forEach((item) => {
+    const idx = bucketIndexFor(item.sale_created_at);
+    buckets.set(idx, (buckets.get(idx) || 0) + item.subtotal_cents);
   });
 
   const maxBucket = buckets.size > 0 ? Math.max(...buckets.keys()) : -1;
@@ -126,6 +138,38 @@ export function computeTotalRevenue(appointments: RawAppointmentRow[]): number {
   return appointments
     .filter((a) => a.status === "completada")
     .reduce((sum, a) => sum + a.price_cents, 0);
+}
+
+export function computeProductRevenue(saleItems: RawSaleItemRow[]): number {
+  return saleItems
+    .filter((s) => s.sale_status === "pagado")
+    .reduce((sum, s) => sum + s.subtotal_cents, 0);
+}
+
+export function computeTopProducts(saleItems: RawSaleItemRow[], limit = 5): TopServiceEntry[] {
+  const paid = saleItems.filter((s) => s.sale_status === "pagado");
+  const byProduct = new Map<string, { revenue: number; color: string }>();
+
+  paid.forEach((item) => {
+    const existing = byProduct.get(item.product_name);
+    if (existing) {
+      existing.revenue += item.subtotal_cents;
+    } else {
+      byProduct.set(item.product_name, {
+        revenue: item.subtotal_cents,
+        color: item.category_color || "#B8697A",
+      });
+    }
+  });
+
+  const sorted = Array.from(byProduct.entries())
+    .map(([name, v]) => ({ name, revenueCents: v.revenue, color: v.color }))
+    .sort((a, b) => b.revenueCents - a.revenueCents)
+    .slice(0, limit);
+
+  const max = sorted[0]?.revenueCents || 1;
+
+  return sorted.map((p) => ({ ...p, pct: Math.round((p.revenueCents / max) * 100) }));
 }
 
 export function computeAvgTicket(appointments: RawAppointmentRow[]): number {
@@ -258,10 +302,12 @@ export function buildReportData(
   range: ReportRange,
   bounds: { start: Date; label: string; rangeDays: number },
   appointments: RawAppointmentRow[],
+  saleItems: RawSaleItemRow[],
   staff: StaffRow[],
   clients: ClientCreatedRow[],
   timezone: string,
-  previousAppointments: RawAppointmentRow[] = []
+  previousAppointments: RawAppointmentRow[] = [],
+  previousSaleItems: RawSaleItemRow[] = []
 ): ReportData {
   const { newCount, recurringCount } = computeNewVsRecurring(
     appointments,
@@ -269,12 +315,18 @@ export function buildReportData(
     bounds.start
   );
 
-  const revenue = computeTotalRevenue(appointments);
+  const serviceRevenue = computeTotalRevenue(appointments);
+  const productRevenue = computeProductRevenue(saleItems);
+  const revenue = serviceRevenue + productRevenue;
+  // Ticket promedio queda referido solo a citas de servicio — mezclar una
+  // venta de S/15 (una liga) con un servicio de S/180 distorsionaría la
+  // métrica sin aportar una lectura clara; el ingreso por productos ya se
+  // ve aparte (productRevenueCents) y en el ranking de productos.
   const avgTicket = computeAvgTicket(appointments);
   const occupancy = computeOccupancy(appointments, staff.length, bounds.rangeDays);
   const noShowRate = computeNoShowRate(appointments);
 
-  const prevRevenue = computeTotalRevenue(previousAppointments);
+  const prevRevenue = computeTotalRevenue(previousAppointments) + computeProductRevenue(previousSaleItems);
   const prevAvgTicket = computeAvgTicket(previousAppointments);
   const prevOccupancy = computeOccupancy(previousAppointments, staff.length, bounds.rangeDays);
   const prevNoShowRate = computeNoShowRate(previousAppointments);
@@ -282,11 +334,14 @@ export function buildReportData(
   return {
     rangeLabel: bounds.label,
     totalRevenueCents: revenue,
+    serviceRevenueCents: serviceRevenue,
+    productRevenueCents: productRevenue,
     avgTicketCents: avgTicket,
     occupancyPct: occupancy,
     noShowRatePct: noShowRate,
-    revenueByBucket: bucketRevenue(appointments, range, bounds.start, timezone),
+    revenueByBucket: bucketRevenue(appointments, saleItems, range, bounds.start, timezone),
     topServices: computeTopServices(appointments),
+    topProducts: computeTopProducts(saleItems),
     staffPerformance: computeStaffPerformance(appointments, staff, bounds.rangeDays),
     newClientCount: newCount,
     recurringClientCount: recurringCount,

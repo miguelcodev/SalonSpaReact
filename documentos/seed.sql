@@ -180,14 +180,73 @@ insert into appointments
 alter table appointments enable trigger trg_update_client_stats;
 
 -- ------------------------------------------------------------
--- 7. PAGOS (para las citas completadas)
+-- 7. PRODUCTOS Y STOCK
 -- ------------------------------------------------------------
-insert into payments (appointment_id, amount_cents, method, status, paid_at) values
-('10000000-0000-0000-0000-000000000011', 12000, 'stripe',   'pagado', '2026-07-02 11:15:00-05'),
-('10000000-0000-0000-0000-000000000012', 3500,  'efectivo', 'pagado', '2026-06-11 11:30:00-05'),
-('10000000-0000-0000-0000-000000000013', 9500,  'yape',     'pagado', '2026-05-20 09:55:00-05'),
-('10000000-0000-0000-0000-000000000014', 6000,  'efectivo', 'pagado', '2026-07-02 15:30:00-05'),
-('10000000-0000-0000-0000-000000000015', 4500,  'yape',     'pagado', '2026-05-09 10:30:00-05');
+insert into product_categories (id, salon_id, name, color_hex) values
+('50000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Tintes',                   '#C77B4B'),
+('50000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Shampús y tratamientos',   '#7C9070'),
+('50000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Accesorios',               '#8D7B9E');
+
+insert into products (id, salon_id, category_id, name, description, price_cents, low_stock_threshold, status) values
+('51000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'Tinte orgánico Nº6',      'Sin amoniaco, tono castaño claro',        3500, 4, 'activo'),
+('51000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000002', 'Shampú reparador 300ml',  'Para cabello dañado por color',           4500, 5, 'activo'),
+('51000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000002', 'Mascarilla nutritiva',    'Tratamiento semanal intensivo',           3800, 3, 'activo'),
+('51000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000003', 'Liga premium (x3)',       'Ligas de seda sin marca',                 1500, 10, 'activo'),
+('51000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000003', 'Peine de cerámica',       'Antiestático, resistente al calor',       2200, 2, 'activo');
+
+-- Stock inicial — el trigger trg_update_product_stock actualiza
+-- products.stock_quantity a partir de estos movimientos 'entrada'.
+insert into stock_movements (product_id, salon_id, type, quantity, reason) values
+('51000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'entrada', 12, 'Stock inicial'),
+('51000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'entrada', 20, 'Stock inicial'),
+('51000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'entrada', 15, 'Stock inicial'),
+('51000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'entrada', 30, 'Stock inicial'),
+('51000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'entrada', 2,  'Stock inicial'); -- deliberadamente bajo, para probar la alerta de bajo stock
+
+-- ------------------------------------------------------------
+-- 8. VENTAS Y PAGOS
+-- Cada cobro (payments) cuelga de una venta (sales), nunca directo de una
+-- cita — así "servicio + productos" es un solo ticket. Las 5 citas
+-- completadas de la sección 6 se cobran aquí como ventas channel='cita'.
+-- ------------------------------------------------------------
+insert into sales (id, salon_id, client_id, appointment_id, channel, status, subtotal_cents, discount_cents, total_cents) values
+-- Camila Rojas — retoque de color + se llevó un tinte para retoques en casa
+('52000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000011', 'cita', 'pagado', 15500, 0, 15500),
+('52000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000012', 'cita', 'pagado', 3500,  0, 3500),
+('52000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000013', 'cita', 'pagado', 9500,  0, 9500),
+('52000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000014', 'cita', 'pagado', 6000,  0, 6000),
+('52000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000015', 'cita', 'pagado', 4500,  0, 4500),
+-- Grecia Núñez — compra en tienda, sin cita asociada
+('52000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000005', null, 'tienda',   'pagado', 8300, 0, 8300),
+-- Lucía Prado — pedido por WhatsApp, sin cita asociada
+('52000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'f0000000-0000-0000-0000-000000000002', null, 'whatsapp', 'pagado', 1500, 0, 1500);
+
+-- Línea de producto en la venta de Camila (además del servicio de su cita)
+insert into sale_items (sale_id, product_id, quantity, unit_price_cents, subtotal_cents) values
+('52000000-0000-0000-0000-000000000001', '51000000-0000-0000-0000-000000000001', 1, 3500, 3500),
+-- Grecia: shampú + mascarilla
+('52000000-0000-0000-0000-000000000006', '51000000-0000-0000-0000-000000000002', 1, 4500, 4500),
+('52000000-0000-0000-0000-000000000006', '51000000-0000-0000-0000-000000000003', 1, 3800, 3800),
+-- Lucía: liga premium por WhatsApp
+('52000000-0000-0000-0000-000000000007', '51000000-0000-0000-0000-000000000004', 1, 1500, 1500);
+
+-- Movimientos de stock por estas ventas (salida) — mismo efecto que
+-- produciría fn_register_sale, insertado directo porque el seed no pasa
+-- por las funciones de negocio (igual que ya hace con appointments/combos).
+insert into stock_movements (product_id, salon_id, type, quantity, reference_sale_id, reason) values
+('51000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'salida', 1, '52000000-0000-0000-0000-000000000001', 'Venta'),
+('51000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'salida', 1, '52000000-0000-0000-0000-000000000006', 'Venta'),
+('51000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'salida', 1, '52000000-0000-0000-0000-000000000006', 'Venta'),
+('51000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'salida', 1, '52000000-0000-0000-0000-000000000007', 'Venta');
+
+insert into payments (sale_id, amount_cents, method, status, paid_at) values
+('52000000-0000-0000-0000-000000000001', 15500, 'stripe',   'pagado', '2026-07-02 11:15:00-05'),
+('52000000-0000-0000-0000-000000000002', 3500,  'efectivo', 'pagado', '2026-06-11 11:30:00-05'),
+('52000000-0000-0000-0000-000000000003', 9500,  'yape',     'pagado', '2026-05-20 09:55:00-05'),
+('52000000-0000-0000-0000-000000000004', 6000,  'efectivo', 'pagado', '2026-07-02 15:30:00-05'),
+('52000000-0000-0000-0000-000000000005', 4500,  'yape',     'pagado', '2026-05-09 10:30:00-05'),
+('52000000-0000-0000-0000-000000000006', 8300,  'efectivo', 'pagado', now() - interval '2 days'),
+('52000000-0000-0000-0000-000000000007', 1500,  'yape',     'pagado', now() - interval '1 day');
 
 -- ------------------------------------------------------------
 -- 8. PROMOCIONES
@@ -240,4 +299,10 @@ insert into whatsapp_messages (salon_id, client_id, appointment_id, direction, r
 --   select * from view_client_segments where salon_id = 'a0000000-0000-0000-0000-000000000001';
 --   select name, status from view_promotions_with_status where salon_id = 'a0000000-0000-0000-0000-000000000001';
 --     (esperado: 3 activas, 1 programada, 1 vencida)
+--   select name, stock_quantity from products where salon_id = 'a0000000-0000-0000-0000-000000000001' order by name;
+--     (esperado: Peine de cerámica en 2 — iguala su low_stock_threshold=2, activa la alerta de bajo stock)
+--   select s.channel, s.total_cents, count(si.id) as items
+--     from sales s left join sale_items si on si.sale_id = s.id
+--     where s.salon_id = 'a0000000-0000-0000-0000-000000000001' group by s.id, s.channel, s.total_cents;
+--     (esperado: 7 ventas — 5 channel='cita', 1 'tienda', 1 'whatsapp')
 -- ============================================================

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useModal } from "./agenda-modal-context";
@@ -8,6 +9,7 @@ import { cancelAppointment, sendAppointmentReminder } from "@/lib/agenda/actions
 import { formatTimeRange } from "@/lib/agenda/grid";
 
 export function AppointmentDetailModal() {
+  const router = useRouter();
   const { detailModal, closeDetailModal } = useModal();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +52,10 @@ export function AppointmentDetailModal() {
 
     setReminderSent(true);
     setIsLoading(false);
+  }
+
+  function handleCharge() {
+    router.push(`/ventas?appointment=${appt.id}`);
   }
 
   return (
@@ -150,6 +156,13 @@ export function AppointmentDetailModal() {
 
         {/* Actions */}
         <div className="px-6 py-5 border-t border-color-line-soft space-y-2">
+          <Button
+            className="w-full"
+            onClick={handleCharge}
+            disabled={isLoading || appt.status === "cancelada"}
+          >
+            Cobrar (servicio + productos)
+          </Button>
           <Button
             variant="outline"
             className="w-full"

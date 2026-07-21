@@ -263,11 +263,94 @@ create table whatsapp_messages (
 create index idx_whatsapp_messages_salon on whatsapp_messages (salon_id, sent_at desc);
 
 -- ------------------------------------------------------------
--- 8. PAGOS
+-- 8. PRODUCTOS Y VENTAS
+-- ------------------------------------------------------------
+create table product_categories (
+  id            uuid primary key default uuid_generate_v4(),
+  salon_id      uuid not null references salons(id) on delete cascade,
+  name          text not null,                 -- Tintes, Shampús/Tratamientos, Accesorios
+  color_hex     text
+);
+
+create table products (
+  id                  uuid primary key default uuid_generate_v4(),
+  salon_id            uuid not null references salons(id) on delete cascade,
+  category_id         uuid not null references product_categories(id),
+  name                text not null,
+  description         text,
+  sku                 text,
+  price_cents         int not null check (price_cents >= 0),
+  stock_quantity      int not null default 0 check (stock_quantity >= 0), -- mantenido por trg_update_product_stock
+  low_stock_threshold int not null default 3 check (low_stock_threshold >= 0),
+  status              text not null default 'activo'
+                      constraint chk_products_status check (status in ('activo', 'pausado')),
+  created_at          timestamptz default now(),
+  updated_at          timestamptz default now()
+);
+
+-- La "venta" es la unidad real de cobranza — un ticket que puede incluir
+-- el servicio de una cita (appointment_id), productos (sale_items), o ambos
+-- a la vez. Un pago (payments) cuelga de una sale, nunca directo de una cita:
+-- así "un servicio + dos productos" es UN cobro, no dos registros sueltos.
+create table sales (
+  id              uuid primary key default uuid_generate_v4(),
+  salon_id        uuid not null references salons(id) on delete cascade,
+  client_id       uuid references clients(id),        -- null: venta a clienta no registrada
+  appointment_id  uuid references appointments(id),    -- opcional: productos vendidos junto a una cita
+  channel         text not null
+                  constraint chk_sales_channel check (channel in ('tienda', 'whatsapp', 'cita')),
+  status          text not null default 'pendiente'
+                  constraint chk_sales_status check (status in ('pendiente', 'pagado', 'anulado')),
+  subtotal_cents  int not null default 0 check (subtotal_cents >= 0),
+  discount_cents  int not null default 0 check (discount_cents >= 0),
+  total_cents     int not null default 0 check (total_cents >= 0),
+  notes           text,
+  created_by      uuid references users(id),
+  created_at      timestamptz default now(),
+  updated_at      timestamptz default now()
+);
+
+create table sale_items (
+  id                uuid primary key default uuid_generate_v4(),
+  sale_id           uuid not null references sales(id) on delete cascade,
+  product_id        uuid not null references products(id),
+  quantity          int not null check (quantity > 0),
+  -- Copiado del catálogo al momento de vender — misma inmutabilidad que
+  -- appointments.price_cents: si el precio del producto cambia después,
+  -- las ventas ya hechas no deben moverse retroactivamente.
+  unit_price_cents  int not null check (unit_price_cents >= 0),
+  subtotal_cents    int not null check (subtotal_cents >= 0)
+);
+
+-- Ledger de movimientos de stock. products.stock_quantity NUNCA se muta
+-- directamente — se deriva de esta tabla vía trigger (mismo patrón que
+-- trg_update_client_stats mantiene clients.visit_count desde appointments).
+-- Da auditoría completa: reposiciones, mermas, ajustes y salidas por venta
+-- quedan todas registradas, no solo el número final.
+create table stock_movements (
+  id                  uuid primary key default uuid_generate_v4(),
+  product_id          uuid not null references products(id) on delete cascade,
+  salon_id            uuid not null references salons(id) on delete cascade,
+  -- Solo dos tipos, no un 'ajuste' ambiguo: una corrección de inventario es
+  -- una entrada (se encontró más de lo registrado) o una salida (merma,
+  -- se encontró menos) — 'reason' distingue el motivo, 'type' el signo.
+  type                text not null
+                      constraint chk_stock_movement_type check (type in ('entrada', 'salida')),
+  quantity            int not null check (quantity > 0), -- siempre positivo; 'type' define el signo aplicado
+  reference_sale_id   uuid references sales(id) on delete set null, -- null si es reposición/ajuste manual
+  reason              text,        -- "Reposición de proveedor", "Merma", "Corrección de inventario", "Venta"...
+  created_by          uuid references users(id),
+  created_at          timestamptz default now()
+);
+
+create index idx_stock_movements_product on stock_movements (product_id, created_at desc);
+
+-- ------------------------------------------------------------
+-- 9. PAGOS
 -- ------------------------------------------------------------
 create table payments (
   id              uuid primary key default uuid_generate_v4(),
-  appointment_id  uuid not null references appointments(id) on delete cascade,
+  sale_id         uuid not null references sales(id) on delete cascade,
   amount_cents    int not null check (amount_cents >= 0),
   method          text not null
                   constraint chk_payments_method check (method in ('stripe', 'efectivo', 'yape', 'plin')),
@@ -380,6 +463,94 @@ begin
 end;
 $$;
 
+-- Creación atómica de una venta (cobranza): la sale, sus sale_items y los
+-- stock_movements de salida se crean todos o ninguno. p_items:
+-- [{"product_id","quantity"}, ...] — puede ser [] si la venta es solo el
+-- servicio de una cita (p_appointment_id). Antes de insertar nada, bloquea
+-- cada producto (`for update`) y valida stock suficiente — evita vender de
+-- más si dos cobros concurrentes apuntan al mismo producto, el mismo
+-- problema de condición de carrera que `no_overlap` resuelve para citas,
+-- aquí con un lock de fila porque es una cantidad acumulada, no un rango.
+create or replace function fn_register_sale(
+  p_salon_id uuid,
+  p_client_id uuid,
+  p_appointment_id uuid,
+  p_channel text,
+  p_items jsonb,
+  p_discount_cents int default 0,
+  p_created_by uuid default null
+)
+returns uuid
+language plpgsql
+as $$
+declare
+  v_sale_id uuid;
+  v_item jsonb;
+  v_product products%rowtype;
+  v_quantity int;
+  v_subtotal int := 0;
+  v_appointment_price int;
+begin
+  -- Paso 1: bloquear y validar TODOS los productos antes de crear nada.
+  for v_item in select * from jsonb_array_elements(p_items) loop
+    v_quantity := (v_item->>'quantity')::int;
+    if v_quantity is null or v_quantity <= 0 then
+      raise exception 'La cantidad debe ser mayor a 0';
+    end if;
+
+    select * into v_product
+    from products
+    where id = (v_item->>'product_id')::uuid and salon_id = p_salon_id
+    for update;
+
+    if not found then
+      raise exception 'Producto % no existe en el salón', v_item->>'product_id';
+    end if;
+    if v_product.stock_quantity < v_quantity then
+      raise exception 'Stock insuficiente de %: quedan %, se pidieron %',
+        v_product.name, v_product.stock_quantity, v_quantity;
+    end if;
+
+    v_subtotal := v_subtotal + (v_product.price_cents * v_quantity);
+  end loop;
+
+  if p_appointment_id is not null then
+    select price_cents into v_appointment_price
+    from appointments
+    where id = p_appointment_id and salon_id = p_salon_id;
+    if not found then
+      raise exception 'Cita % no existe en el salón', p_appointment_id;
+    end if;
+    v_subtotal := v_subtotal + v_appointment_price;
+  end if;
+
+  insert into sales
+    (salon_id, client_id, appointment_id, channel, status,
+     subtotal_cents, discount_cents, total_cents, created_by)
+  values
+    (p_salon_id, p_client_id, p_appointment_id, p_channel, 'pendiente',
+     v_subtotal, p_discount_cents, greatest(v_subtotal - p_discount_cents, 0), p_created_by)
+  returning id into v_sale_id;
+
+  -- Paso 2: con la venta ya creada, insertar líneas y descontar stock
+  -- (el trigger trg_update_product_stock hace el descuento real).
+  for v_item in select * from jsonb_array_elements(p_items) loop
+    v_quantity := (v_item->>'quantity')::int;
+
+    select * into v_product from products where id = (v_item->>'product_id')::uuid;
+
+    insert into sale_items (sale_id, product_id, quantity, unit_price_cents, subtotal_cents)
+    values (v_sale_id, v_product.id, v_quantity, v_product.price_cents,
+            v_product.price_cents * v_quantity);
+
+    insert into stock_movements (product_id, salon_id, type, quantity, reference_sale_id, reason, created_by)
+    values (v_product.id, p_salon_id, 'salida', v_quantity, v_sale_id, 'Venta', p_created_by);
+  end loop;
+
+  return v_sale_id;
+end;
+$$;
+
 -- ============================================================
 -- TRIGGERS --- falta
 -- ============================================================
@@ -430,6 +601,30 @@ create trigger trg_touch_services     before update on services     for each row
 create trigger trg_touch_clients      before update on clients      for each row execute function fn_touch_updated_at();
 create trigger trg_touch_appointments before update on appointments for each row execute function fn_touch_updated_at();
 create trigger trg_touch_promotions   before update on promotions   for each row execute function fn_touch_updated_at();
+create trigger trg_touch_products     before update on products     for each row execute function fn_touch_updated_at();
+create trigger trg_touch_sales        before update on sales        for each row execute function fn_touch_updated_at();
+
+-- Mantiene products.stock_quantity a partir del ledger de stock_movements —
+-- nunca se muta la columna directamente desde la aplicación.
+create or replace function fn_update_product_stock()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.type = 'entrada' then
+    update products set stock_quantity = stock_quantity + new.quantity, updated_at = now()
+    where id = new.product_id;
+  elsif new.type = 'salida' then
+    update products set stock_quantity = greatest(stock_quantity - new.quantity, 0), updated_at = now()
+    where id = new.product_id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger trg_update_product_stock
+  after insert on stock_movements
+  for each row execute function fn_update_product_stock();
 
 -- revisar su exisrtencia
 -- ============================================================
@@ -460,6 +655,10 @@ select
   end as status
 from promotions p;
 
+-- Nota: solo ingresos por servicios (appointments). Los ingresos por venta
+-- de productos (sales/sale_items) se calculan aparte en el módulo Reportes
+-- (lib/reportes/), que ya hace consultas propias parametrizadas por rango de
+-- fechas — esta vista es all-time y ningún código de la app la consulta hoy.
 create or replace view view_revenue_by_week
 with (security_invoker = true) as
 select
@@ -521,6 +720,11 @@ alter table loyalty_progress      enable row level security;
 alter table automation_rules      enable row level security;
 alter table message_queue         enable row level security;
 alter table whatsapp_messages     enable row level security;
+alter table product_categories    enable row level security;
+alter table products              enable row level security;
+alter table sales                 enable row level security;
+alter table sale_items            enable row level security;
+alter table stock_movements       enable row level security;
 alter table payments              enable row level security;
 
 -- --- salons: cada usuario ve/edita solo su propio salón ---
@@ -602,6 +806,30 @@ create policy "whatsapp_messages_all" on whatsapp_messages for all
   using (salon_id = fn_current_salon_id())
   with check (salon_id = fn_current_salon_id());
 
+create policy "product_categories_select" on product_categories for select
+  using (salon_id = fn_current_salon_id());
+create policy "product_categories_all" on product_categories for all
+  using (salon_id = fn_current_salon_id())
+  with check (salon_id = fn_current_salon_id());
+
+create policy "products_select" on products for select
+  using (salon_id = fn_current_salon_id());
+create policy "products_all" on products for all
+  using (salon_id = fn_current_salon_id())
+  with check (salon_id = fn_current_salon_id());
+
+create policy "sales_select" on sales for select
+  using (salon_id = fn_current_salon_id());
+create policy "sales_all" on sales for all
+  using (salon_id = fn_current_salon_id())
+  with check (salon_id = fn_current_salon_id());
+
+create policy "stock_movements_select" on stock_movements for select
+  using (salon_id = fn_current_salon_id());
+create policy "stock_movements_all" on stock_movements for all
+  using (salon_id = fn_current_salon_id())
+  with check (salon_id = fn_current_salon_id());
+
 -- --- Tablas SIN salon_id: el tenant se resuelve vía join con su tabla padre ---
 
 create policy "service_staff_prices_select" on service_staff_prices for select
@@ -622,14 +850,23 @@ create policy "combo_services_all" on combo_services for all
   with check (exists (select 1 from combos c
                       where c.id = combo_id and c.salon_id = fn_current_salon_id()));
 
+create policy "sale_items_select" on sale_items for select
+  using (exists (select 1 from sales s
+                 where s.id = sale_id and s.salon_id = fn_current_salon_id()));
+create policy "sale_items_all" on sale_items for all
+  using (exists (select 1 from sales s
+                 where s.id = sale_id and s.salon_id = fn_current_salon_id()))
+  with check (exists (select 1 from sales s
+                      where s.id = sale_id and s.salon_id = fn_current_salon_id()));
+
 create policy "payments_select" on payments for select
-  using (exists (select 1 from appointments a
-                 where a.id = appointment_id and a.salon_id = fn_current_salon_id()));
+  using (exists (select 1 from sales s
+                 where s.id = sale_id and s.salon_id = fn_current_salon_id()));
 create policy "payments_all" on payments for all
-  using (exists (select 1 from appointments a
-                 where a.id = appointment_id and a.salon_id = fn_current_salon_id()))
-  with check (exists (select 1 from appointments a
-                      where a.id = appointment_id and a.salon_id = fn_current_salon_id()));
+  using (exists (select 1 from sales s
+                 where s.id = sale_id and s.salon_id = fn_current_salon_id()))
+  with check (exists (select 1 from sales s
+                      where s.id = sale_id and s.salon_id = fn_current_salon_id()));
 
 create policy "promotion_redemptions_select" on promotion_redemptions for select
   using (exists (select 1 from promotions p
