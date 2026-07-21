@@ -9,6 +9,7 @@ import {
   type NewPromotionInput,
   type LoyaltyProgramInput,
 } from "./schemas";
+import { renderTemplate } from "@/lib/whatsapp/template";
 
 type Ok = { ok: true };
 type Err = { ok: false; error: string };
@@ -129,4 +130,87 @@ export async function upsertLoyaltyProgram(
 
   revalidatePath("/promociones");
   return { ok: true };
+}
+
+function formatPromoDiscount(discountType: string, discountValue: number): string {
+  if (discountType === "percent") return `${discountValue}%`;
+  return `S/ ${(discountValue / 100).toFixed(0)}`;
+}
+
+/**
+ * Enqueues one message_queue row per target client — sending happens on the
+ * next cron tick (app/api/cron/whatsapp/route.ts), never synchronously from
+ * this request. Targeting: clients who've had a non-cancelled appointment
+ * for a service in the promo's category (or all clients, if the promo
+ * applies to every category) — a defensible reading of "clientas
+ * segmentadas" given the schema has no separate audience/segment model.
+ */
+export async function sendPromotionBlast(
+  promotionId: string
+): Promise<ActionResult<{ recipientCount: number }>> {
+  const supabase = await createClient();
+  const salonId = await getCurrentSalonId();
+
+  const { data: promo, error: promoError } = await supabase
+    .from("promotions")
+    .select("id, name, category_id, discount_type, discount_value, valid_to")
+    .eq("id", promotionId)
+    .single();
+
+  if (promoError || !promo) {
+    return { ok: false, error: "Promoción no encontrada" };
+  }
+
+  let clientIds: string[];
+
+  if (promo.category_id) {
+    const { data: rows } = await supabase
+      .from("appointments")
+      .select("client_id, service:services!inner(category_id)")
+      .eq("service.category_id", promo.category_id)
+      .neq("status", "cancelada");
+    clientIds = Array.from(new Set((rows || []).map((r) => r.client_id)));
+  } else {
+    const { data: rows } = await supabase.from("clients").select("id");
+    clientIds = (rows || []).map((r) => r.id);
+  }
+
+  if (clientIds.length === 0) {
+    return { ok: false, error: "No hay clientas para segmentar esta promoción" };
+  }
+
+  const { data: clients } = await supabase
+    .from("clients")
+    .select("id, name, phone")
+    .in("id", clientIds)
+    .not("phone", "is", null);
+
+  if (!clients || clients.length === 0) {
+    return { ok: false, error: "Ninguna clienta segmentada tiene teléfono registrado" };
+  }
+
+  const discountLabel = formatPromoDiscount(promo.discount_type, promo.discount_value);
+  const validityLabel = promo.valid_to
+    ? ` Válida hasta ${new Date(`${promo.valid_to}T00:00:00`).toLocaleDateString("es-PE", { day: "numeric", month: "long" })}.`
+    : "";
+  const template = `¡Hola {nombre}! 🌸 Tenemos una promo para ti: ${promo.name} — ${discountLabel} de descuento.${validityLabel} Escríbenos para agendar en Bellamora.`;
+
+  const rows = clients.map((c) => ({
+    salon_id: salonId,
+    client_id: c.id,
+    appointment_id: null,
+    rule_type: "promocion",
+    body: renderTemplate(template, { nombre: c.name }),
+    scheduled_for: new Date().toISOString(),
+    status: "pendiente" as const,
+  }));
+
+  const { error: insertError } = await supabase.from("message_queue").insert(rows);
+  if (insertError) {
+    console.error("Error enqueueing promotion blast:", insertError);
+    return { ok: false, error: "No se pudo encolar el envío" };
+  }
+
+  revalidatePath("/whatsapp");
+  return { ok: true, recipientCount: rows.length };
 }

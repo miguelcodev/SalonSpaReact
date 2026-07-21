@@ -11,6 +11,11 @@ import {
 } from "./schemas";
 import { getServicesForNewAppointment, getStaffPricesForService } from "./queries";
 import { formatTimeRange } from "./grid";
+import {
+  enqueueAppointmentMessages,
+  cancelAppointmentMessages,
+  sendManualReminder,
+} from "@/lib/whatsapp/queue";
 
 export async function createAppointment(input: NewAppointmentInput): Promise<
   | { ok: true; appointmentId: string }
@@ -83,6 +88,10 @@ export async function createAppointment(input: NewAppointmentInput): Promise<
       return { ok: false, error: "Error al crear la cita" };
     }
 
+    // Best-effort: a failure here shouldn't roll back a successfully booked
+    // appointment, just means no automated messages go out for it.
+    await enqueueAppointmentMessages(supabase, data.id);
+
     revalidatePath("/agenda");
     return { ok: true, appointmentId: data.id };
   } catch (error) {
@@ -131,6 +140,17 @@ export async function createComboAppointment(input: ComboAppointmentInput): Prom
       return { ok: false, error: errorMsg };
     }
 
+    // The RPC returns only the shared combo_group_id, not the individual
+    // appointment ids it created — look them up to enqueue messages for each.
+    const { data: comboAppointments } = await supabase
+      .from("appointments")
+      .select("id")
+      .eq("combo_group_id", data);
+
+    for (const appt of comboAppointments || []) {
+      await enqueueAppointmentMessages(supabase, appt.id);
+    }
+
     revalidatePath("/agenda");
     return { ok: true, comboGroupId: data };
   } catch (error) {
@@ -161,10 +181,28 @@ export async function cancelAppointment(appointmentId: string): Promise<
       return { ok: false, error: "No se pudo cancelar la cita" };
     }
 
+    // Don't send a reminder for a cita that no longer exists.
+    await cancelAppointmentMessages(supabase, appointmentId);
+
     revalidatePath("/agenda");
     return { ok: true };
   } catch (error) {
     console.error("cancelAppointment error:", error);
     return { ok: false, error: "Error al cancelar la cita" };
   }
+}
+
+export async function sendAppointmentReminder(
+  appointmentId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!appointmentId) {
+    return { ok: false, error: "ID de cita inválido" };
+  }
+
+  const supabase = await createClient();
+  const result = await sendManualReminder(supabase, appointmentId);
+  if (result.ok) {
+    revalidatePath("/whatsapp");
+  }
+  return result;
 }

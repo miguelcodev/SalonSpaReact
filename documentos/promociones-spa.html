@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bellamora — Promociones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF7F4; --surface:#FFFFFF; --ink:#2B2130; --ink-soft:#7A6B76; --ink-faint:#B3A5AC;
+    --accent-rose:#B8697A; --accent-rose-deep:#9A4F60; --accent-gold:#C9A227; --accent-sage:#7C9070;
+    --accent-lavender:#8D7B9E; --accent-terra:#C77B4B;
+    --line:#EBE0E3; --line-soft:#F3ECEE;
+    --shadow-card: 0 1px 2px rgba(43,33,48,0.06), 0 6px 16px rgba(43,33,48,0.06);
+    --shadow-pop: 0 12px 32px rgba(43,33,48,0.16);
+    --shadow-modal: 0 20px 60px rgba(43,33,48,0.25);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased;}
+  .app{max-width:1360px; margin:0 auto; padding:28px 32px 60px;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:24px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--accent-rose),var(--accent-gold)); display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-weight:600; font-size:15px;}
+  .brand-name{font-family:'Fraunces',serif; font-size:22px; font-weight:600;}
+  .brand-sub{font-size:11px; color:var(--ink-soft); letter-spacing:1.5px; text-transform:uppercase; margin-top:-2px;}
+
+  .nav-menu{position:relative;}
+  .nav-trigger{display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--line); padding:9px 16px; border-radius:999px; font-size:13px; font-weight:600; cursor:pointer; color:var(--ink);}
+  .nav-trigger svg{transition:transform .15s;}
+  .nav-menu.open .nav-trigger svg{transform:rotate(180deg);}
+  .nav-dropdown{position:absolute; top:calc(100% + 8px); left:0; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow-pop); width:250px; padding:8px; opacity:0; pointer-events:none; transform:translateY(-6px); transition:all .15s; z-index:30;}
+  .nav-menu.open .nav-dropdown{opacity:1; pointer-events:auto; transform:translateY(0);}
+  .nav-item{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600;}
+  .nav-item:hover{background:var(--line-soft);}
+  .nav-item.active{background:#F6E9EC; color:var(--accent-rose-deep);}
+  .nav-item .dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .nav-item .soon{margin-left:auto; font-size:9.5px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.4px;}
+  .nav-item.disabled{color:var(--ink-faint); cursor:default;}
+  .nav-item.disabled:hover{background:transparent;}
+  .nav-divider{height:1px; background:var(--line-soft); margin:6px 4px;}
+
+  .btn-primary{background:var(--accent-rose); color:#fff; border:none; padding:10px 18px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(184,105,122,0.35);}
+  .btn-primary:hover{background:var(--accent-rose-deep);}
+
+  /* ---------- Stat strip ---------- */
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:22px;}
+  .stat-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 20px; box-shadow:var(--shadow-card);}
+  .stat-card .num{font-family:'Fraunces',serif; font-size:26px; font-weight:600;}
+  .stat-card .lbl{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+  .stat-card .delta{font-size:11px; font-weight:700; margin-top:6px; display:inline-block; padding:2px 8px; border-radius:999px;}
+  .delta.up{background:#EAF0E4; color:var(--accent-sage);}
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex; gap:10px; margin-bottom:18px;}
+  .tab{padding:9px 18px; border-radius:999px; border:1px solid var(--line); background:var(--surface); font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
+  .tab.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  /* ---------- Promo grid ---------- */
+  .promo-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px; margin-bottom:32px;}
+  .promo-card{background:var(--surface); border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:var(--shadow-card); position:relative;}
+  .promo-top{padding:18px 20px 14px; position:relative;}
+  .promo-top::before{content:''; position:absolute; left:0; top:0; width:5px; height:100%;}
+  .promo-card.cat-cabello .promo-top::before{background:var(--accent-terra);}
+  .promo-card.cat-unas .promo-top::before{background:var(--accent-rose);}
+  .promo-card.cat-facial .promo-top::before{background:var(--accent-sage);}
+  .promo-card.cat-general .promo-top::before{background:var(--accent-gold);}
+  .promo-status{position:absolute; top:16px; right:18px; font-size:9.5px; font-weight:700; padding:3px 9px; border-radius:999px; text-transform:uppercase; letter-spacing:.3px;}
+  .status-activa{background:#EAF0E4; color:var(--accent-sage);}
+  .status-programada{background:#FBF0DD; color:#A67E1E;}
+  .status-vencida{background:#F3ECEE; color:var(--ink-faint);}
+  .promo-title{font-family:'Fraunces',serif; font-size:18px; font-weight:600; margin:0 0 5px; padding-right:70px;}
+  .promo-desc{font-size:12.5px; color:var(--ink-soft); line-height:1.5;}
+  .promo-meta{display:flex; gap:16px; padding:0 20px 16px; font-size:11.5px; color:var(--ink-soft);}
+  .promo-meta b{color:var(--ink); font-family:'IBM Plex Mono',monospace; font-weight:600;}
+  .promo-bar{height:6px; background:var(--line-soft); margin:0 20px 4px; border-radius:999px; overflow:hidden;}
+  .promo-bar-fill{height:100%; background:var(--accent-rose); border-radius:999px;}
+  .promo-usage{font-size:11px; color:var(--ink-faint); padding:0 20px 16px;}
+  .promo-actions{display:flex; border-top:1px solid var(--line-soft);}
+  .promo-actions button{flex:1; border:none; background:transparent; padding:12px; font-size:12px; font-weight:700; cursor:pointer; color:var(--ink-soft); font-family:'Inter',sans-serif;}
+  .promo-actions button:first-child{border-right:1px solid var(--line-soft);}
+  .promo-actions button:hover{background:var(--line-soft); color:var(--ink);}
+
+  /* new promo tile */
+  .promo-new{border:2px dashed var(--line); border-radius:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:220px; cursor:pointer; color:var(--ink-soft); background:transparent;}
+  .promo-new:hover{background:#FBF3EE; border-color:var(--accent-rose);}
+  .promo-new .plus{width:40px; height:40px; border-radius:50%; background:var(--surface); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:18px;}
+  .promo-new span.lbl{font-size:13px; font-weight:700;}
+
+  /* ---------- Loyalty ---------- */
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px;}
+  .section-head h2{font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin:0;}
+  .section-head .hint{font-size:12px; color:var(--ink-soft);}
+
+  .loyalty-card{background:var(--surface); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow-card); padding:24px 26px; display:flex; gap:32px; align-items:center; flex-wrap:wrap;}
+  .loyalty-visual{display:flex; gap:8px;}
+  .stamp{width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; border:2px dashed var(--line);}
+  .stamp.filled{background:linear-gradient(135deg,var(--accent-rose),var(--accent-gold)); border:2px solid transparent; color:#fff;}
+  .loyalty-text{flex:1; min-width:220px;}
+  .loyalty-text h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:16px; font-weight:600;}
+  .loyalty-text p{margin:0; font-size:12.5px; color:var(--ink-soft); line-height:1.5;}
+  .loyalty-cta{background:var(--line-soft); color:var(--ink); border:none; padding:10px 18px; border-radius:999px; font-size:12.5px; font-weight:700; cursor:pointer;}
+
+  /* ---------- Modal (crear promo) ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(43,33,48,0.45); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; z-index:50; padding:20px;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--surface); border-radius:20px; width:100%; max-width:440px; box-shadow:var(--shadow-modal); overflow:hidden; animation:pop .18s ease;}
+  @keyframes pop{from{opacity:0; transform:translateY(8px) scale(0.98);} to{opacity:1; transform:translateY(0) scale(1);}}
+  .modal-head{padding:22px 24px 16px; border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:center;}
+  .modal-head h3{font-family:'Fraunces',serif; font-size:19px; margin:0; font-weight:600;}
+  .modal-close{border:none; background:var(--line-soft); width:28px; height:28px; border-radius:50%; cursor:pointer; color:var(--ink-soft); font-size:15px;}
+  .modal-body{padding:20px 24px; display:flex; flex-direction:column; gap:14px;}
+  .field label{display:block; font-size:11.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.3px; margin-bottom:6px;}
+  .field input, .field select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line); font-size:13.5px; font-family:'Inter',sans-serif; color:var(--ink); background:var(--bg); outline:none;}
+  .field input:focus, .field select:focus{border-color:var(--accent-rose); background:#fff;}
+  .field-row{display:flex; gap:12px;}
+  .field-row .field{flex:1;}
+  .modal-actions{padding:16px 24px 24px;}
+  .modal-actions button{width:100%; padding:12px; border-radius:999px; font-size:13.5px; font-weight:700; cursor:pointer; border:none; background:var(--accent-rose); color:#fff;}
+  .modal-actions button:hover{background:var(--accent-rose-deep);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:22px;">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">Bellamora</div>
+          <div class="brand-sub">Promociones</div>
+        </div>
+      </div>
+
+      <div class="nav-menu" id="navMenu">
+        <button class="nav-trigger" onclick="toggleNav(event)">
+          Módulos
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="nav-dropdown">
+          <a class="nav-item" href="agenda-spa.html"><span class="dot" style="background:var(--accent-terra)"></span> Agenda de citas</a>
+          <a class="nav-item" href="crm-spa.html"><span class="dot" style="background:var(--accent-rose)"></span> Clientes (CRM)</a>
+          <a class="nav-item" href="catalogo-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Catálogo de servicios</a>
+          <a class="nav-item active" href="promociones-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Promociones</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="whatsapp-spa.html"><span class="dot" style="background:#4C7A5A"></span> Mensajería WhatsApp</a>
+          <a class="nav-item" href="reportes-spa.html"><span class="dot" style="background:var(--accent-lavender)"></span> Reportes</a>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="openModal()">＋ Nueva promoción</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card"><div class="num">4</div><div class="lbl">Promociones activas</div></div>
+    <div class="stat-card"><div class="num">128</div><div class="lbl">Cupones redimidos este mes</div><span class="delta up">↑ 18%</span></div>
+    <div class="stat-card"><div class="num">S/ 6,420</div><div class="lbl">Ingresos generados por promos</div></div>
+    <div class="stat-card"><div class="num">23</div><div class="lbl">Clientas en programa de puntos</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('todas', this)">Todas</button>
+    <button class="tab" onclick="setTab('activa', this)">Activas</button>
+    <button class="tab" onclick="setTab('programada', this)">Programadas</button>
+    <button class="tab" onclick="setTab('vencida', this)">Vencidas</button>
+  </div>
+
+  <div class="promo-grid" id="promoGrid"></div>
+
+  <div class="section-head">
+    <h2>Programa de fidelidad</h2>
+    <div class="hint">Se activa automáticamente al alcanzar el sello 6</div>
+  </div>
+  <div class="loyalty-card">
+    <div class="loyalty-visual" id="stamps"></div>
+    <div class="loyalty-text">
+      <h3>Ejemplo: Camila Rojas</h3>
+      <p>4 de 6 visitas completadas. Al llegar a 6, recibe automáticamente un <b style="color:var(--ink)">25% de descuento</b> en su siguiente servicio, notificado por WhatsApp.</p>
+    </div>
+    <button class="loyalty-cta" onclick="alert('Configuración del programa de fidelidad')">Configurar programa</button>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3>Nueva promoción</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Nombre de la promoción</label>
+        <input type="text" placeholder="Ej. Miércoles de uñas">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Categoría</label>
+          <select>
+            <option>Cabello</option><option>Uñas</option><option>Facial</option><option>Maquillaje</option><option>General</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Descuento</label>
+          <input type="text" placeholder="Ej. 20%">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Vigencia desde</label>
+          <input type="text" placeholder="dd/mm/aaaa">
+        </div>
+        <div class="field">
+          <label>Vigencia hasta</label>
+          <input type="text" placeholder="dd/mm/aaaa">
+        </div>
+      </div>
+      <div class="field">
+        <label>Enviar automáticamente por</label>
+        <select><option>WhatsApp a clientas segmentadas</option><option>Solo mostrar en agenda</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="alert('Promoción creada y lista para enviar por WhatsApp ✅'); closeModal()">Crear promoción</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const promos = [
+  {cat:'unas', status:'activa', title:'Miércoles de uñas', desc:'20% de descuento en manicure y pedicure todos los miércoles del mes.', discount:'20% OFF', valid:'Válida hasta 31 jul', used:64, limit:100},
+  {cat:'cabello', status:'activa', title:'Primera visita cabello', desc:'15% de descuento en corte o color para clientas nuevas referidas.', discount:'15% OFF', valid:'Sin fecha de vencimiento', used:12, limit:50},
+  {cat:'facial', status:'programada', title:'Ritual de primavera', desc:'Combo facial + limpieza profunda a precio especial, inicia el 1 de agosto.', discount:'S/ 150 combo', valid:'Empieza 01 ago', used:0, limit:40},
+  {cat:'general', status:'activa', title:'Cumpleañeras del mes', desc:'25% de descuento automático en cualquier servicio durante su mes de cumpleaños.', discount:'25% OFF', valid:'Activa todo el año', used:8, limit:999},
+  {cat:'cabello', status:'vencida', title:'Balayage de verano', desc:'Promoción de temporada para color y mechas, ya finalizada.', discount:'18% OFF', valid:'Venció 30 jun', used:44, limit:44},
+];
+
+let currentTab = 'todas';
+
+function renderPromos(){
+  const grid = document.getElementById('promoGrid');
+  grid.innerHTML = '';
+  const filtered = promos.filter(p=> currentTab==='todas' || p.status===currentTab);
+
+  filtered.forEach(p=>{
+    const pct = Math.min(100, Math.round((p.used/p.limit)*100));
+    const card = document.createElement('div');
+    card.className = `promo-card cat-${p.cat}`;
+    card.innerHTML = `
+      <div class="promo-top">
+        <span class="promo-status status-${p.status}">${p.status}</span>
+        <div class="promo-title">${p.title}</div>
+        <div class="promo-desc">${p.desc}</div>
+      </div>
+      <div class="promo-meta">
+        <div>Descuento<br><b>${p.discount}</b></div>
+        <div>Vigencia<br><b>${p.valid}</b></div>
+      </div>
+      <div class="promo-bar"><div class="promo-bar-fill" style="width:${pct}%"></div></div>
+      <div class="promo-usage">${p.used} / ${p.limit >= 999 ? '∞' : p.limit} cupones usados</div>
+      <div class="promo-actions">
+        <button onclick="alert('Enviando «${p.title}» por WhatsApp a clientas segmentadas...')">Enviar por WhatsApp</button>
+        <button onclick="alert('Editando «${p.title}»')">Editar</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  const newTile = document.createElement('div');
+  newTile.className = 'promo-new';
+  newTile.onclick = openModal;
+  newTile.innerHTML = `<div class="plus">＋</div><span class="lbl">Crear promoción</span>`;
+  grid.appendChild(newTile);
+}
+
+function setTab(t, el){
+  currentTab = t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  renderPromos();
+}
+
+function renderStamps(){
+  const el = document.getElementById('stamps');
+  el.innerHTML = '';
+  for(let i=1;i<=6;i++){
+    const s = document.createElement('div');
+    s.className = 'stamp' + (i<=4 ? ' filled' : '');
+    s.textContent = i<=4 ? '✓' : i;
+    el.appendChild(s);
+  }
+}
+
+function openModal(){ document.getElementById('overlay').classList.add('show'); }
+function closeModal(e){
+  if(e && e.target.id !== 'overlay') return;
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function toggleNav(e){
+  e.stopPropagation();
+  document.getElementById('navMenu').classList.toggle('open');
+}
+document.addEventListener('click', ()=> document.getElementById('navMenu').classList.remove('open'));
+
+renderPromos();
+renderStamps();
+</script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bellamora — Catálogo de servicios</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF7F4; --surface:#FFFFFF; --ink:#2B2130; --ink-soft:#7A6B76; --ink-faint:#B3A5AC;
+    --accent-rose:#B8697A; --accent-rose-deep:#9A4F60; --accent-gold:#C9A227; --accent-sage:#7C9070;
+    --accent-lavender:#8D7B9E; --accent-terra:#C77B4B;
+    --line:#EBE0E3; --line-soft:#F3ECEE;
+    --shadow-card: 0 1px 2px rgba(43,33,48,0.06), 0 6px 16px rgba(43,33,48,0.06);
+    --shadow-pop: 0 12px 32px rgba(43,33,48,0.16);
+    --shadow-modal: 0 20px 60px rgba(43,33,48,0.25);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased;}
+  .app{max-width:1360px; margin:0 auto; padding:28px 32px 60px;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:24px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--accent-rose),var(--accent-gold)); display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-weight:600; font-size:15px;}
+  .brand-name{font-family:'Fraunces',serif; font-size:22px; font-weight:600;}
+  .brand-sub{font-size:11px; color:var(--ink-soft); letter-spacing:1.5px; text-transform:uppercase; margin-top:-2px;}
+
+  .nav-menu{position:relative;}
+  .nav-trigger{display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--line); padding:9px 16px; border-radius:999px; font-size:13px; font-weight:600; cursor:pointer; color:var(--ink);}
+  .nav-trigger svg{transition:transform .15s;}
+  .nav-menu.open .nav-trigger svg{transform:rotate(180deg);}
+  .nav-dropdown{position:absolute; top:calc(100% + 8px); left:0; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow-pop); width:250px; padding:8px; opacity:0; pointer-events:none; transform:translateY(-6px); transition:all .15s; z-index:30;}
+  .nav-menu.open .nav-dropdown{opacity:1; pointer-events:auto; transform:translateY(0);}
+  .nav-item{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600;}
+  .nav-item:hover{background:var(--line-soft);}
+  .nav-item.active{background:#F6E9EC; color:var(--accent-rose-deep);}
+  .nav-item .dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .nav-item .soon{margin-left:auto; font-size:9.5px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.4px;}
+  .nav-item.disabled{color:var(--ink-faint); cursor:default;}
+  .nav-item.disabled:hover{background:transparent;}
+  .nav-divider{height:1px; background:var(--line-soft); margin:6px 4px;}
+
+  .btn-primary{background:var(--accent-rose); color:#fff; border:none; padding:10px 18px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(184,105,122,0.35);}
+  .btn-primary:hover{background:var(--accent-rose-deep);}
+
+  .tabs{display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;}
+  .tab{padding:9px 18px; border-radius:999px; border:1px solid var(--line); background:var(--surface); font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; gap:7px;}
+  .tab.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .tab .dot{width:7px; height:7px; border-radius:50%;}
+
+  table{width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); border-radius:18px; overflow:hidden; box-shadow:var(--shadow-card);}
+  thead th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--ink-soft); padding:14px 18px; border-bottom:1px solid var(--line); background:#FBF7F4;}
+  tbody tr{border-bottom:1px solid var(--line-soft);}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:#FBF3EE;}
+  tbody td{padding:14px 18px; font-size:13.5px; vertical-align:middle;}
+  .svc-name{display:flex; align-items:center; gap:10px; font-weight:700;}
+  .svc-icon{width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0;}
+  .svc-desc{font-size:11.5px; font-weight:400; color:var(--ink-soft); margin-top:1px;}
+  .duration{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);}
+  .price{font-family:'IBM Plex Mono',monospace; font-weight:700;}
+  .staff-pills{display:flex; gap:5px; flex-wrap:wrap;}
+  .staff-pill{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700; color:#fff; border:2px solid var(--surface); margin-left:-8px;}
+  .staff-pill:first-child{margin-left:0;}
+  .row-actions{display:flex; gap:6px; justify-content:flex-end;}
+  .icon-btn{width:30px; height:30px; border-radius:8px; border:1px solid var(--line); background:var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-soft); font-size:13px;}
+  .icon-btn:hover{background:var(--line-soft); color:var(--ink);}
+  .status-toggle{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px; cursor:pointer;}
+  .status-activo{background:#EAF0E4; color:var(--accent-sage);}
+  .status-pausado{background:#F3ECEE; color:var(--ink-faint);}
+  .buffer-tag{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#A6873A; background:#FBF7EE; padding:3px 9px; border-radius:999px;}
+  .price-list{display:flex; flex-direction:column; gap:3px;}
+  .price-row{display:flex; align-items:center; gap:6px; font-size:12px;}
+  .price-row .pn{width:16px; height:16px; border-radius:50%; color:#fff; font-size:8.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .price-row .pv{font-family:'IBM Plex Mono',monospace; font-weight:700;}
+  .combo-icon{width:30px; height:30px; border-radius:9px; background:#F1ECF4; color:var(--accent-lavender); display:flex; align-items:center; justify-content:center; font-size:14px;}
+  .savings{color:var(--accent-sage); font-weight:700;}
+
+  .section-title{font-family:'Fraunces',serif; font-size:15px; font-weight:600; margin:26px 0 10px; display:flex; align-items:center; gap:8px;}
+
+  /* recommendations panel */
+  .reco{margin-top:34px; background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow-card); overflow:hidden;}
+  .reco-head{padding:20px 24px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; gap:10px;}
+  .reco-head .ico{width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--accent-gold),var(--accent-rose)); display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;}
+  .reco-head h2{font-family:'Fraunces',serif; font-size:17px; font-weight:600; margin:0;}
+  .reco-body{padding:6px 24px 20px;}
+  .reco-item{display:flex; gap:14px; padding:14px 0; border-bottom:1px solid var(--line-soft);}
+  .reco-item:last-child{border-bottom:none;}
+  .reco-num{width:26px; height:26px; border-radius:50%; background:#F6E9EC; color:var(--accent-rose-deep); font-family:'Fraunces',serif; font-weight:700; font-size:12.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .reco-item h4{margin:0 0 3px; font-size:13.5px; font-weight:700;}
+  .reco-item p{margin:0; font-size:12.5px; color:var(--ink-soft); line-height:1.55;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:22px;">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">Bellamora</div>
+          <div class="brand-sub">Catálogo de servicios</div>
+        </div>
+      </div>
+
+      <div class="nav-menu" id="navMenu">
+        <button class="nav-trigger" onclick="toggleNav(event)">
+          Módulos
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="nav-dropdown">
+          <a class="nav-item" href="agenda-spa.html"><span class="dot" style="background:var(--accent-terra)"></span> Agenda de citas</a>
+          <a class="nav-item" href="crm-spa.html"><span class="dot" style="background:var(--accent-rose)"></span> Clientes (CRM)</a>
+          <a class="nav-item active" href="catalogo-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Catálogo de servicios</a>
+          <a class="nav-item" href="promociones-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Promociones</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="whatsapp-spa.html"><span class="dot" style="background:#4C7A5A"></span> Mensajería WhatsApp</a>
+          <a class="nav-item" href="reportes-spa.html"><span class="dot" style="background:var(--accent-lavender)"></span> Reportes</a>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="alert('Formulario para crear nuevo servicio')">＋ Nuevo servicio</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('todos', this)">Todos (10)</button>
+    <button class="tab" onclick="setTab('cabello', this)"><span class="dot" style="background:var(--accent-terra)"></span>Cabello</button>
+    <button class="tab" onclick="setTab('unas', this)"><span class="dot" style="background:var(--accent-rose)"></span>Uñas</button>
+    <button class="tab" onclick="setTab('facial', this)"><span class="dot" style="background:var(--accent-sage)"></span>Facial</button>
+    <button class="tab" onclick="setTab('maquillaje', this)"><span class="dot" style="background:var(--accent-lavender)"></span>Maquillaje</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Servicio</th>
+        <th>Duración</th>
+        <th>Buffer limpieza</th>
+        <th>Precio por especialista</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="svcBody"></tbody>
+  </table>
+
+  <div class="section-title" style="margin-top:30px;">🔗 Combos disponibles</div>
+  <table>
+    <thead>
+      <tr><th>Combo</th><th>Incluye</th><th>Precio combinado</th><th>Ahorro</th></tr>
+    </thead>
+    <tbody id="comboBody"></tbody>
+  </table>
+
+  <div class="reco">
+    <div class="reco-head">
+      <div class="ico">✦</div>
+      <h2>Recomendaciones para Agenda + Catálogo</h2>
+    </div>
+    <div class="reco-body">
+      <div class="reco-item">
+        <div class="reco-num">✅</div>
+        <div><h4>Vincular duración del catálogo con la agenda <span style="color:var(--accent-sage); font-size:11px;">— implementado</span></h4>
+        <p>La Agenda ahora toma la duración directamente del catálogo y bloquea el horario automáticamente al crear una cita.</p></div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">✅</div>
+        <div><h4>Servicios combinables (paquetes) <span style="color:var(--accent-sage); font-size:11px;">— implementado</span></h4>
+        <p>Desde la Agenda ahora se puede activar "Agendar como combo" para reservar dos servicios en paralelo con distinta especialista, a la misma hora.</p></div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">✅</div>
+        <div><h4>Precio dinámico por especialista <span style="color:var(--accent-sage); font-size:11px;">— implementado</span></h4>
+        <p>Los servicios de cabello ahora tienen precio distinto según la especialista (Renata, senior vs. Andrea, junior), reflejado tanto en el Catálogo como en la Agenda.</p></div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">✅</div>
+        <div><h4>Buffer de limpieza/preparación <span style="color:var(--accent-sage); font-size:11px;">— implementado</span></h4>
+        <p>Cada servicio define minutos de preparación después de la cita. La Agenda bloquea ese tiempo automáticamente como "buffer" no reservable.</p></div>
+      </div>
+      <div class="reco-item">
+        <div class="reco-num">5</div>
+        <div><h4>Estado "pausado" visible en reserva online</h4>
+        <p>Si un servicio se pausa (ej. falta de insumos), debería desaparecer automáticamente de la futura página de reserva pública, no solo del panel interno — así se evita que una clienta reserve algo no disponible.</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const staffColors = {R:'#C77B4B', A:'#E0A87A', M:'#B8697A', F:'#7C9070', S:'#8D7B9E'};
+const staffNames = {R:'Renata', A:'Andrea', M:'Milagros', F:'Fabiola', S:'Sofía'};
+
+const services = [
+  {cat:'cabello', icon:'✂️', bg:'#FDEAE0', name:'Corte + Balayage', desc:'Corte a medida con mechas balayage', dur:'90 min', buffer:10, prices:[{s:'R',price:'S/ 180'},{s:'A',price:'S/ 140'}], status:'activo'},
+  {cat:'cabello', icon:'✂️', bg:'#FDEAE0', name:'Corte de puntas', desc:'Corte simple de mantenimiento', dur:'30 min', buffer:5, prices:[{s:'R',price:'S/ 45'},{s:'A',price:'S/ 35'}], status:'activo'},
+  {cat:'cabello', icon:'✂️', bg:'#FDEAE0', name:'Retoque de color', desc:'Aplicación de color en raíz', dur:'75 min', buffer:10, prices:[{s:'R',price:'S/ 120'},{s:'A',price:'S/ 95'}], status:'activo'},
+  {cat:'unas', icon:'💅', bg:'#F6E9EC', name:'Uñas gel + diseño', desc:'Esmaltado permanente con diseño', dur:'60 min', buffer:5, prices:[{s:'M',price:'S/ 70'}], status:'activo'},
+  {cat:'unas', icon:'💅', bg:'#F6E9EC', name:'Manicure express', desc:'Esmaltado tradicional rápido', dur:'30 min', buffer:5, prices:[{s:'M',price:'S/ 35'}], status:'activo'},
+  {cat:'unas', icon:'💅', bg:'#F6E9EC', name:'Pedicure spa', desc:'Exfoliación, masaje y esmaltado', dur:'50 min', buffer:10, prices:[{s:'M',price:'S/ 65'}], status:'pausado'},
+  {cat:'facial', icon:'🌿', bg:'#EAF0E4', name:'Facial hidratante', desc:'Limpieza + mascarilla hidratante', dur:'60 min', buffer:10, prices:[{s:'F',price:'S/ 120'}], status:'activo'},
+  {cat:'facial', icon:'🌿', bg:'#EAF0E4', name:'Limpieza profunda', desc:'Extracción y desincrustación', dur:'55 min', buffer:10, prices:[{s:'F',price:'S/ 95'}], status:'activo'},
+  {cat:'maquillaje', icon:'💄', bg:'#F1ECF4', name:'Maquillaje social', desc:'Para eventos y fiestas', dur:'60 min', buffer:5, prices:[{s:'S',price:'S/ 150'}], status:'activo'},
+  {cat:'maquillaje', icon:'💄', bg:'#F1ECF4', name:'Maquillaje express', desc:'Look natural para el día a día', dur:'30 min', buffer:5, prices:[{s:'S',price:'S/ 60'}], status:'activo'},
+];
+
+const combos = [
+  {name:'Combo Novia', includes:'Corte de puntas (Andrea) + Maquillaje social (Sofía)', combined:'S/ 165', savings:'Ahorra S/ 20 vs. por separado'},
+  {name:'Combo Renueva', includes:'Retoque de color (Renata) + Facial hidratante (Fabiola)', combined:'S/ 225', savings:'Ahorra S/ 15 vs. por separado'},
+  {name:'Combo Exprés', includes:'Manicure express (Milagros) + Maquillaje express (Sofía)', combined:'S/ 85', savings:'Ahorra S/ 10 vs. por separado'},
+];
+
+let currentTab = 'todos';
+
+function renderTable(){
+  const body = document.getElementById('svcBody');
+  body.innerHTML = '';
+  const filtered = services.filter(s=> currentTab==='todos' || s.cat===currentTab);
+  filtered.forEach(s=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <div class="svc-name">
+          <div class="svc-icon" style="background:${s.bg}">${s.icon}</div>
+          <div><div>${s.name}</div><div class="svc-desc">${s.desc}</div></div>
+        </div>
+      </td>
+      <td class="duration">${s.dur}</td>
+      <td><span class="buffer-tag">+${s.buffer} min</span></td>
+      <td><div class="price-list">${s.prices.map(p=>`<div class="price-row"><span class="pn" style="background:${staffColors[p.s]}">${p.s}</span>${staffNames[p.s]} <span class="pv" style="margin-left:auto">${p.price}</span></div>`).join('')}</div></td>
+      <td><span class="status-toggle status-${s.status}" onclick="toggleStatus(this)">${s.status==='activo' ? '● Activo' : '○ Pausado'}</span></td>
+      <td><div class="row-actions"><div class="icon-btn" title="Editar">✎</div><div class="icon-btn" title="Eliminar">🗑</div></div></td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function renderCombos(){
+  const body = document.getElementById('comboBody');
+  body.innerHTML = combos.map(c=>`
+    <tr>
+      <td><div class="svc-name"><div class="combo-icon">🔗</div>${c.name}</div></td>
+      <td style="font-size:12.5px; color:var(--ink-soft)">${c.includes}</td>
+      <td class="price">${c.combined}</td>
+      <td class="savings">${c.savings}</td>
+    </tr>
+  `).join('');
+}
+
+function toggleStatus(el){
+  const isActivo = el.classList.contains('status-activo');
+  el.classList.toggle('status-activo');
+  el.classList.toggle('status-pausado');
+  el.textContent = isActivo ? '○ Pausado' : '● Activo';
+}
+
+function setTab(t, el){
+  currentTab = t;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
+
+function toggleNav(e){
+  e.stopPropagation();
+  document.getElementById('navMenu').classList.toggle('open');
+}
+document.addEventListener('click', ()=> document.getElementById('navMenu').classList.remove('open'));
+renderTable();
+renderCombos();
+</script>
+</body>
+</html>

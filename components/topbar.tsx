@@ -11,10 +11,11 @@ const ACTIVE_MODULES = [
   { href: "/crm", name: "Clientes (CRM)", color: "#B8697A" },
   { href: "/catalogo", name: "Catálogo de servicios", color: "#C9A227" },
   { href: "/promociones", name: "Promociones", color: "#C9A227" },
+  { href: "/whatsapp", name: "Mensajería WhatsApp", color: "#4C7A5A" },
   { href: "/reportes", name: "Reportes", color: "#8D7B9E" },
 ];
 
-const COMING_SOON_MODULES = [{ name: "Mensajería WhatsApp", color: "#4C7A5A" }];
+const COMING_SOON_MODULES: { name: string; color: string }[] = [];
 
 export function Topbar() {
   const [navOpen, setNavOpen] = useState(false);
@@ -77,23 +78,26 @@ export function Topbar() {
                     );
                   })}
 
-                  <div className="border-t border-color-line-soft my-2"></div>
-
-                  {COMING_SOON_MODULES.map((module) => (
-                    <div
-                      key={module.name}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-color-ink-faint opacity-50 cursor-not-allowed"
-                    >
-                      <div
-                        className="w-2 h-2 rounded"
-                        style={{ backgroundColor: module.color }}
-                      ></div>
-                      <span>{module.name}</span>
-                      <span className="ml-auto text-xs uppercase tracking-wide bg-color-line-soft text-color-ink-soft px-2 py-1 rounded-full font-bold">
-                        Próximamente
-                      </span>
-                    </div>
-                  ))}
+                  {COMING_SOON_MODULES.length > 0 && (
+                    <>
+                      <div className="border-t border-color-line-soft my-2"></div>
+                      {COMING_SOON_MODULES.map((module) => (
+                        <div
+                          key={module.name}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-color-ink-faint opacity-50 cursor-not-allowed"
+                        >
+                          <div
+                            className="w-2 h-2 rounded"
+                            style={{ backgroundColor: module.color }}
+                          ></div>
+                          <span>{module.name}</span>
+                          <span className="ml-auto text-xs uppercase tracking-wide bg-color-line-soft text-color-ink-soft px-2 py-1 rounded-full font-bold">
+                            Próximamente
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
 
                   <div className="border-t border-color-line-soft my-2"></div>
 

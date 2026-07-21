@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bellamora — Mensajería WhatsApp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF7F4; --surface:#FFFFFF; --ink:#2B2130; --ink-soft:#7A6B76; --ink-faint:#B3A5AC;
+    --accent-rose:#B8697A; --accent-rose-deep:#9A4F60; --accent-gold:#C9A227; --accent-sage:#7C9070;
+    --accent-lavender:#8D7B9E; --accent-terra:#C77B4B; --wa:#4C7A5A;
+    --line:#EBE0E3; --line-soft:#F3ECEE;
+    --shadow-card: 0 1px 2px rgba(43,33,48,0.06), 0 6px 16px rgba(43,33,48,0.06);
+    --shadow-pop: 0 12px 32px rgba(43,33,48,0.16);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased;}
+  .app{max-width:1360px; margin:0 auto; padding:28px 32px 60px;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:24px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--accent-rose),var(--accent-gold)); display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-weight:600; font-size:15px;}
+  .brand-name{font-family:'Fraunces',serif; font-size:22px; font-weight:600;}
+  .brand-sub{font-size:11px; color:var(--ink-soft); letter-spacing:1.5px; text-transform:uppercase; margin-top:-2px;}
+
+  .nav-menu{position:relative;}
+  .nav-trigger{display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--line); padding:9px 16px; border-radius:999px; font-size:13px; font-weight:600; cursor:pointer; color:var(--ink);}
+  .nav-trigger svg{transition:transform .15s;}
+  .nav-menu.open .nav-trigger svg{transform:rotate(180deg);}
+  .nav-dropdown{position:absolute; top:calc(100% + 8px); left:0; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow-pop); width:250px; padding:8px; opacity:0; pointer-events:none; transform:translateY(-6px); transition:all .15s; z-index:30;}
+  .nav-menu.open .nav-dropdown{opacity:1; pointer-events:auto; transform:translateY(0);}
+  .nav-item{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600;}
+  .nav-item:hover{background:var(--line-soft);}
+  .nav-item.active{background:#F6E9EC; color:var(--accent-rose-deep);}
+  .nav-item .dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .nav-item .soon{margin-left:auto; font-size:9.5px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.4px;}
+  .nav-item.disabled{color:var(--ink-faint); cursor:default;}
+  .nav-item.disabled:hover{background:transparent;}
+  .nav-divider{height:1px; background:var(--line-soft); margin:6px 4px;}
+
+  .conn-badge{display:flex; align-items:center; gap:8px; background:#EAF0E4; color:var(--accent-sage); padding:8px 14px; border-radius:999px; font-size:12.5px; font-weight:700;}
+  .conn-dot{width:7px; height:7px; border-radius:50%; background:var(--accent-sage); box-shadow:0 0 0 3px rgba(124,144,112,0.25);}
+
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;}
+  .stat-card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 20px; box-shadow:var(--shadow-card);}
+  .stat-card .num{font-family:'Fraunces',serif; font-size:26px; font-weight:600;}
+  .stat-card .lbl{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+  .stat-card .delta{font-size:11px; font-weight:700; margin-top:6px; display:inline-block; padding:2px 8px; border-radius:999px; background:#EAF0E4; color:var(--accent-sage);}
+
+  .layout{display:grid; grid-template-columns:1fr 380px; gap:20px; align-items:start;}
+
+  .section-title{font-family:'Fraunces',serif; font-size:17px; font-weight:600; margin:0 0 14px;}
+
+  /* automation rules */
+  .rule{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 20px; margin-bottom:12px; box-shadow:var(--shadow-card); display:flex; gap:16px; align-items:flex-start;}
+  .rule-icon{width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0;}
+  .rule-body{flex:1;}
+  .rule-top{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .rule-top h4{margin:0; font-size:14px; font-weight:700;}
+  .rule-trigger{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .rule-msg{background:#F5FBF5; border:1px solid #DCEBDC; border-radius:10px; padding:10px 12px; margin-top:10px; font-size:12px; color:#3F5A34; line-height:1.5; position:relative;}
+  .rule-msg::before{content:'💬'; margin-right:5px;}
+  .rule-meta{display:flex; gap:14px; margin-top:8px; font-size:11px; color:var(--ink-faint);}
+
+  .switch{position:relative; width:40px; height:22px; flex-shrink:0;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider{position:absolute; cursor:pointer; inset:0; background:#E2D9DC; border-radius:999px; transition:.2s;}
+  .slider::before{content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;}
+  input:checked + .slider{background:var(--accent-sage);}
+  input:checked + .slider::before{transform:translateX(18px);}
+
+  /* inbox preview */
+  .inbox{background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow-card); overflow:hidden;}
+  .inbox-head{padding:16px 18px; border-bottom:1px solid var(--line-soft); display:flex; align-items:center; justify-content:between; gap:8px;}
+  .inbox-head span{font-size:12.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.4px;}
+  .chat-row{display:flex; gap:11px; padding:13px 16px; border-bottom:1px solid var(--line-soft); cursor:pointer;}
+  .chat-row:last-child{border-bottom:none;}
+  .chat-row:hover{background:#FBF3EE;}
+  .chat-avatar{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:13px; color:#fff; flex-shrink:0;}
+  .chat-name{font-size:13px; font-weight:700;}
+  .chat-preview{font-size:11.5px; color:var(--ink-soft); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px;}
+  .chat-time{font-size:10px; color:var(--ink-faint); margin-left:auto; white-space:nowrap;}
+  .unread-dot{width:8px; height:8px; border-radius:50%; background:var(--accent-rose); margin-left:6px; flex-shrink:0;}
+
+  .new-rule{border:2px dashed var(--line); border-radius:16px; padding:18px 20px; text-align:center; color:var(--ink-soft); font-size:13px; font-weight:700; cursor:pointer;}
+  .new-rule:hover{background:#FBF3EE; border-color:var(--accent-rose);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:22px;">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">Bellamora</div>
+          <div class="brand-sub">Mensajería WhatsApp</div>
+        </div>
+      </div>
+
+      <div class="nav-menu" id="navMenu">
+        <button class="nav-trigger" onclick="toggleNav(event)">
+          Módulos
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="nav-dropdown">
+          <a class="nav-item" href="agenda-spa.html"><span class="dot" style="background:var(--accent-terra)"></span> Agenda de citas</a>
+          <a class="nav-item" href="crm-spa.html"><span class="dot" style="background:var(--accent-rose)"></span> Clientes (CRM)</a>
+          <a class="nav-item" href="catalogo-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Catálogo de servicios</a>
+          <a class="nav-item" href="promociones-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Promociones</a>
+          <a class="nav-item active" href="whatsapp-spa.html"><span class="dot" style="background:var(--wa)"></span> Mensajería WhatsApp</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="reportes-spa.html"><span class="dot" style="background:var(--accent-lavender)"></span> Reportes</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="conn-badge"><span class="conn-dot"></span> WhatsApp Business conectado · +51 999 888 777</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card"><div class="num">312</div><div class="lbl">Mensajes automáticos este mes</div><span class="delta">↑ 24%</span></div>
+    <div class="stat-card"><div class="num">96%</div><div class="lbl">Tasa de entrega</div></div>
+    <div class="stat-card"><div class="num">18</div><div class="lbl">No-shows evitados (recordatorio)</div></div>
+    <div class="stat-card"><div class="num">41</div><div class="lbl">Reseñas obtenidas post-servicio</div></div>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="section-title">Automatizaciones activas</div>
+
+      <div class="rule">
+        <div class="rule-icon" style="background:#EAF0E4">✅</div>
+        <div class="rule-body">
+          <div class="rule-top">
+            <div>
+              <h4>Confirmación de cita</h4>
+              <div class="rule-trigger">Se envía al momento de agendar</div>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="rule-msg">Hola {nombre} 🌸 Tu cita de {servicio} quedó confirmada para el {fecha} a las {hora} con {especialista}. ¡Te esperamos en Bellamora!</div>
+          <div class="rule-meta"><span>Enviados: 128</span><span>Apertura: 98%</span></div>
+        </div>
+      </div>
+
+      <div class="rule">
+        <div class="rule-icon" style="background:#FBF0DD">⏰</div>
+        <div class="rule-body">
+          <div class="rule-top">
+            <div>
+              <h4>Recordatorio 24h antes</h4>
+              <div class="rule-trigger">Se envía 24 horas antes de la cita</div>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="rule-msg">¡Hola {nombre}! Te recordamos tu cita de {servicio} mañana {fecha} a las {hora}. Responde CONFIRMAR o CANCELAR.</div>
+          <div class="rule-meta"><span>Enviados: 96</span><span>Respuesta: 74%</span></div>
+        </div>
+      </div>
+
+      <div class="rule">
+        <div class="rule-icon" style="background:#FBF0DD">⏰</div>
+        <div class="rule-body">
+          <div class="rule-top">
+            <div>
+              <h4>Recordatorio 2h antes</h4>
+              <div class="rule-trigger">Se envía 2 horas antes de la cita</div>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="rule-msg">{nombre}, tu cita es en 2 horas ⏳ Te esperamos en Bellamora. Si necesitas reprogramar, avísanos por este medio.</div>
+          <div class="rule-meta"><span>Enviados: 89</span><span>No-shows evitados: 18</span></div>
+        </div>
+      </div>
+
+      <div class="rule">
+        <div class="rule-icon" style="background:#F6E9EC">⭐</div>
+        <div class="rule-body">
+          <div class="rule-top">
+            <div>
+              <h4>Solicitud de reseña</h4>
+              <div class="rule-trigger">Se envía 2 horas después de finalizar el servicio</div>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="rule-msg">Gracias por visitarnos, {nombre} 💕 ¿Nos regalas una reseña de tu experiencia hoy? Tu opinión nos ayuda mucho.</div>
+          <div class="rule-meta"><span>Enviados: 74</span><span>Reseñas obtenidas: 41</span></div>
+        </div>
+      </div>
+
+      <div class="rule">
+        <div class="rule-icon" style="background:#F1ECF4">🔁</div>
+        <div class="rule-body">
+          <div class="rule-top">
+            <div>
+              <h4>Reactivación de clientas inactivas</h4>
+              <div class="rule-trigger">Se envía tras 60 días sin visitas</div>
+            </div>
+            <label class="switch"><input type="checkbox"><span class="slider"></span></label>
+          </div>
+          <div class="rule-msg">Te extrañamos, {nombre} 🌷 Vuelve esta semana y llévate 15% de descuento en tu próximo servicio.</div>
+          <div class="rule-meta"><span>Estado: desactivado</span></div>
+        </div>
+      </div>
+
+      <div class="rule">
+        <div class="rule-icon" style="background:#FDEAE0">🎂</div>
+        <div class="rule-body">
+          <div class="rule-top">
+            <div>
+              <h4>Felicitación de cumpleaños</h4>
+              <div class="rule-trigger">Se envía el día del cumpleaños de la clienta</div>
+            </div>
+            <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+          </div>
+          <div class="rule-msg">¡Feliz cumpleaños, {nombre}! 🎉 Como regalo, tienes 25% de descuento en cualquier servicio este mes.</div>
+          <div class="rule-meta"><span>Enviados: 8</span><span>Canjeados: 5</span></div>
+        </div>
+      </div>
+
+      <div class="new-rule" onclick="alert('Formulario para crear nueva automatización')">＋ Crear nueva automatización</div>
+    </div>
+
+    <div>
+      <div class="section-title">Bandeja reciente</div>
+      <div class="inbox">
+        <div class="inbox-head"><span>Conversaciones</span></div>
+        <div class="chat-row" onclick="alert('Abrir conversación con Camila Rojas')">
+          <div class="chat-avatar" style="background:#C77B4B">CR</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center;"><span class="chat-name">Camila Rojas</span><span class="chat-time">10:42</span></div>
+            <div class="chat-preview">CONFIRMAR 👍</div>
+          </div>
+          <div class="unread-dot"></div>
+        </div>
+        <div class="chat-row" onclick="alert('Abrir conversación con Valeria Soto')">
+          <div class="chat-avatar" style="background:#7C9070">VS</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center;"><span class="chat-name">Valeria Soto</span><span class="chat-time">09:15</span></div>
+            <div class="chat-preview">¿Puedo cambiar mi cita al viernes?</div>
+          </div>
+          <div class="unread-dot"></div>
+        </div>
+        <div class="chat-row" onclick="alert('Abrir conversación con Lucía Prado')">
+          <div class="chat-avatar" style="background:#B8697A">LP</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center;"><span class="chat-name">Lucía Prado</span><span class="chat-time">ayer</span></div>
+            <div class="chat-preview">Gracias, quedó hermoso 😍</div>
+          </div>
+        </div>
+        <div class="chat-row" onclick="alert('Abrir conversación con Daniela Cruz')">
+          <div class="chat-avatar" style="background:#8D7B9E">DC</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center;"><span class="chat-name">Daniela Cruz</span><span class="chat-time">ayer</span></div>
+            <div class="chat-preview">⭐⭐⭐⭐⭐ Excelente atención</div>
+          </div>
+        </div>
+        <div class="chat-row" onclick="alert('Abrir conversación con Ana Beltrán')">
+          <div class="chat-avatar" style="background:#C77B4B">AB</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center;"><span class="chat-name">Ana Beltrán</span><span class="chat-time">lun</span></div>
+            <div class="chat-preview">CANCELAR, surgió un imprevisto</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleNav(e){
+  e.stopPropagation();
+  document.getElementById('navMenu').classList.toggle('open');
+}
+document.addEventListener('click', ()=> document.getElementById('navMenu').classList.remove('open'));
+</script>
+</body>
+</html>

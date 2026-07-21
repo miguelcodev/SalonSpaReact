@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bellamora — Agenda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF7F4;
+    --surface:#FFFFFF;
+    --ink:#2B2130;
+    --ink-soft:#7A6B76;
+    --ink-faint:#B3A5AC;
+    --accent-rose:#B8697A;
+    --accent-rose-deep:#9A4F60;
+    --accent-gold:#C9A227;
+    --accent-sage:#7C9070;
+    --accent-lavender:#8D7B9E;
+    --accent-terra:#C77B4B;
+    --line:#EBE0E3;
+    --line-soft:#F3ECEE;
+    --radius:14px;
+    --shadow-card: 0 1px 2px rgba(43,33,48,0.06), 0 6px 16px rgba(43,33,48,0.06);
+    --shadow-modal: 0 20px 60px rgba(43,33,48,0.25);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased;}
+  .app{max-width:1440px; margin:0 auto; padding:28px 32px 60px;}
+
+  /* ---------- Topbar ---------- */
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:26px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--accent-rose),var(--accent-gold)); display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-weight:600; font-size:15px;}
+  .brand-name{font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:0.2px;}
+  .brand-sub{font-size:11px; color:var(--ink-soft); letter-spacing:1.5px; text-transform:uppercase; margin-top:-2px;}
+
+  /* dropdown */
+  .nav-menu{position:relative;}
+  .nav-trigger{display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--line); padding:9px 16px; border-radius:999px; font-size:13px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; color:var(--ink);}
+  .nav-trigger svg{transition:transform .15s;}
+  .nav-menu.open .nav-trigger svg{transform:rotate(180deg);}
+  .nav-dropdown{position:absolute; top:calc(100% + 8px); left:0; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 32px rgba(43,33,48,0.16); width:250px; padding:8px; opacity:0; pointer-events:none; transform:translateY(-6px); transition:all .15s; z-index:30;}
+  .nav-menu.open .nav-dropdown{opacity:1; pointer-events:auto; transform:translateY(0);}
+  .nav-item{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600;}
+  .nav-item:hover{background:var(--line-soft);}
+  .nav-item.active{background:#F6E9EC; color:var(--accent-rose-deep);}
+  .nav-item .dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .nav-item .soon{margin-left:auto; font-size:9.5px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.4px;}
+  .nav-item.disabled{color:var(--ink-faint); cursor:default;}
+  .nav-item.disabled:hover{background:transparent;}
+  .nav-divider{height:1px; background:var(--line-soft); margin:6px 4px;}
+
+  .date-nav{display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:6px 8px;}
+  .date-nav button{width:30px; height:30px; border-radius:50%; border:none; background:transparent; color:var(--ink-soft); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s;}
+  .date-nav button:hover{background:var(--line-soft); color:var(--ink);}
+  .date-nav .label{font-family:'Fraunces',serif; font-size:15px; font-weight:500; min-width:170px; text-align:center;}
+  .date-nav .today-pill{font-size:11px; color:var(--accent-rose-deep); background:#F6E9EC; padding:4px 10px; border-radius:999px; font-weight:600; cursor:pointer; border:none;}
+
+  .view-toggle{display:flex; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:4px;}
+  .view-toggle button{border:none; background:transparent; padding:7px 16px; border-radius:999px; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; font-family:'Inter',sans-serif;}
+  .view-toggle button.active{background:var(--ink); color:#fff;}
+
+  .topbar-right{display:flex; align-items:center; gap:12px;}
+  .search-box{position:relative;}
+  .search-box input{width:220px; padding:9px 14px 9px 34px; border-radius:999px; border:1px solid var(--line); background:var(--surface); font-size:13px; font-family:'Inter',sans-serif; color:var(--ink); outline:none;}
+  .search-box input:focus{border-color:var(--accent-rose);}
+  .search-box svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-faint);}
+
+  .btn-primary{background:var(--accent-rose); color:#fff; border:none; padding:10px 18px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; font-family:'Inter',sans-serif; box-shadow:0 4px 14px rgba(184,105,122,0.35); transition:transform .12s, background .15s;}
+  .btn-primary:hover{background:var(--accent-rose-deep); transform:translateY(-1px);}
+
+  /* ---------- Legend ---------- */
+  .legend{display:flex; gap:18px; margin-bottom:18px; flex-wrap:wrap; align-items:center;}
+  .legend-item{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); font-weight:500;}
+  .legend-dot{width:9px; height:9px; border-radius:3px;}
+  .legend-sep{width:1px; height:14px; background:var(--line);}
+  .legend-swatch{width:14px; height:8px; border-radius:3px;}
+
+  /* ---------- Grid ---------- */
+  .board{background:var(--surface); border:1px solid var(--line); border-radius:20px; overflow:hidden; box-shadow:var(--shadow-card);}
+  .board-scroll{overflow-x:auto;}
+  .grid{display:grid; grid-template-columns:64px repeat(var(--cols,5), minmax(180px,1fr)); min-width:1100px;}
+
+  .staff-header{position:sticky; top:0; z-index:2; background:var(--surface);}
+  .corner{border-bottom:1px solid var(--line); border-right:1px solid var(--line-soft);}
+  .staff-col{padding:16px 14px; border-bottom:1px solid var(--line); border-right:1px solid var(--line-soft); display:flex; align-items:center; gap:10px;}
+  .staff-avatar{width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:13px; color:#fff; flex-shrink:0;}
+  .staff-name{font-size:13.5px; font-weight:700; line-height:1.2;}
+  .staff-role{font-size:11px; color:var(--ink-soft); font-weight:500;}
+
+  .hour-label{padding:4px 8px 0 0; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-faint); border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); position:relative; top:-7px;}
+  .slot{border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); min-height:64px; position:relative; padding:3px; cursor:pointer; transition:background .12s;}
+  .slot:hover{background:#FBF3EE;}
+  .slot:hover::after{content:'+ Reservar'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--accent-rose-deep); font-weight:600; pointer-events:none; opacity:0.85;}
+
+  /* ---------- Appointment ticket ---------- */
+  .ticket{background:#fff; border-radius:9px; padding:8px 9px 8px 11px; height:100%; box-shadow:var(--shadow-card); position:relative; overflow:hidden; cursor:pointer; border:1px solid var(--line-soft); transition:transform .1s;}
+  .ticket:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(43,33,48,0.14);}
+  .ticket::before{content:''; position:absolute; left:0; top:0; bottom:0; width:4px;}
+  .ticket.cat-cabello::before{background:var(--accent-terra);}
+  .ticket.cat-unas::before{background:var(--accent-rose);}
+  .ticket.cat-facial::before{background:var(--accent-sage);}
+  .ticket.cat-maquillaje::before{background:var(--accent-lavender);}
+  .ticket .t-time{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-soft); font-weight:500;}
+  .ticket .t-client{font-size:12.5px; font-weight:700; margin:2px 0 1px; line-height:1.2; display:flex; align-items:center; gap:4px;}
+  .ticket .t-service{font-size:11px; color:var(--ink-soft); line-height:1.2;}
+  .ticket .t-buffer{font-size:9.5px; color:var(--ink-faint); margin-top:2px;}
+  .ticket .t-badge{position:absolute; top:6px; right:6px; font-size:9px; padding:2px 6px; border-radius:999px; font-weight:700;}
+  .badge-confirmada{background:#EAF0E4; color:var(--accent-sage);}
+  .badge-pendiente{background:#FBF0DD; color:#A67E1E;}
+  .combo-tag{font-size:9px; background:#F1ECF4; color:var(--accent-lavender); padding:1px 5px; border-radius:999px; font-weight:700;}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(43,33,48,0.45); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; z-index:50; padding:20px;}
+  .overlay.show{display:flex;}
+  .modal{background:var(--surface); border-radius:20px; width:100%; max-width:440px; max-height:88vh; overflow-y:auto; box-shadow:var(--shadow-modal); animation:pop .18s ease;}
+  @keyframes pop{from{opacity:0; transform:translateY(8px) scale(0.98);} to{opacity:1; transform:translateY(0) scale(1);}}
+  .modal-head{padding:22px 24px 16px; border-bottom:1px solid var(--line-soft); display:flex; justify-content:space-between; align-items:flex-start; position:sticky; top:0; background:var(--surface); z-index:1;}
+  .modal-head h3{font-family:'Fraunces',serif; font-size:20px; margin:0 0 4px; font-weight:600;}
+  .modal-head .sub{font-size:12.5px; color:var(--ink-soft);}
+  .modal-close{border:none; background:var(--line-soft); width:28px; height:28px; border-radius:50%; cursor:pointer; color:var(--ink-soft); font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .modal-body{padding:18px 24px;}
+  .info-row{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line-soft); font-size:13px;}
+  .info-row:last-child{border-bottom:none;}
+  .info-row .k{color:var(--ink-soft); font-weight:500;}
+  .info-row .v{font-weight:700; text-align:right;}
+  .modal-note{background:#FBF7F4; border-radius:10px; padding:12px 14px; font-size:12.5px; color:var(--ink-soft); margin-top:6px; line-height:1.5;}
+  .modal-note b{color:var(--ink);}
+  .modal-actions{display:flex; gap:10px; padding:18px 24px 24px;}
+  .modal-actions button{flex:1; padding:11px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Inter',sans-serif; border:none;}
+  .act-whatsapp{background:#EAF0E4; color:#3F5A34;}
+  .act-cancel{background:#FBEAEA; color:#A13E3E;}
+
+  /* ---------- New appointment form ---------- */
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:11.5px; font-weight:700; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.3px; margin-bottom:6px;}
+  .field input, .field select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line); font-size:13.5px; font-family:'Inter',sans-serif; color:var(--ink); background:var(--bg); outline:none;}
+  .field input:focus, .field select:focus{border-color:var(--accent-rose); background:#fff;}
+  .field-row{display:flex; gap:12px;}
+  .field-row .field{flex:1;}
+  .auto-fill{background:#F6E9EC; border:1px solid #EEDCE1; border-radius:10px; padding:10px 12px; font-size:12px; color:var(--accent-rose-deep); line-height:1.6; margin-top:2px;}
+  .auto-fill b{color:var(--ink);}
+  .auto-fill.warn{background:#FBEAEA; color:#A13E3E; border-color:#F3D2D2;}
+
+  .combo-toggle{display:flex; align-items:center; gap:10px; padding:12px 0; margin-bottom:6px; border-top:1px dashed var(--line); border-bottom:1px dashed var(--line);}
+  .combo-toggle label{font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:9px;}
+  .combo-toggle .hint{font-size:11px; color:var(--ink-soft); font-weight:400; margin-top:1px;}
+  .switch{position:relative; width:38px; height:21px; flex-shrink:0;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider{position:absolute; cursor:pointer; inset:0; background:#E2D9DC; border-radius:999px; transition:.2s;}
+  .slider::before{content:''; position:absolute; width:15px; height:15px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;}
+  input:checked + .slider{background:var(--accent-lavender);}
+  input:checked + .slider::before{transform:translateX(17px);}
+  .combo-block{display:none; padding-top:6px;}
+  .combo-block.show{display:block;}
+  .combo-block .field label{color:var(--accent-lavender);}
+
+  /* ---------- Occupied continuation / buffer cells ---------- */
+  .slot-occupied{border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); min-height:64px; background:repeating-linear-gradient(135deg, #F6F1EF, #F6F1EF 6px, #F0E9E6 6px, #F0E9E6 12px); display:flex; align-items:center; justify-content:center;}
+  .slot-occupied span{font-size:10px; color:var(--ink-faint); font-weight:600;}
+  .slot-buffer{border-right:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); min-height:64px; background:repeating-linear-gradient(135deg, #FBF7EE, #FBF7EE 6px, #F6EFDD 6px, #F6EFDD 12px); display:flex; align-items:center; justify-content:center;}
+  .slot-buffer span{font-size:10px; color:#A6873A; font-weight:600;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:22px;">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">Bellamora</div>
+          <div class="brand-sub">Agenda del salón</div>
+        </div>
+      </div>
+
+      <div class="nav-menu" id="navMenu">
+        <button class="nav-trigger" onclick="toggleNav(event)">
+          Módulos
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="nav-dropdown">
+          <a class="nav-item active" href="agenda-spa.html"><span class="dot" style="background:var(--accent-terra)"></span> Agenda de citas</a>
+          <a class="nav-item" href="crm-spa.html"><span class="dot" style="background:var(--accent-rose)"></span> Clientes (CRM)</a>
+          <a class="nav-item" href="catalogo-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Catálogo de servicios</a>
+          <a class="nav-item" href="promociones-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Promociones</a>
+          <a class="nav-item" href="whatsapp-spa.html"><span class="dot" style="background:#4C7A5A"></span> Mensajería WhatsApp</a>
+          <a class="nav-item" href="reportes-spa.html"><span class="dot" style="background:var(--accent-lavender)"></span> Reportes</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="date-nav">
+      <button onclick="shiftDay(-1)">‹</button>
+      <div class="label" id="dateLabel">Jueves, 16 de julio</div>
+      <button onclick="shiftDay(1)">›</button>
+      <button class="today-pill" onclick="goToday()">Hoy</button>
+    </div>
+
+    <div class="view-toggle">
+      <button class="active">Día</button>
+      <button>Semana</button>
+    </div>
+
+    <div class="topbar-right">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" placeholder="Buscar clienta...">
+      </div>
+      <button class="btn-primary" onclick="openNewModal()">＋ Nueva cita</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:var(--accent-terra)"></span>Cabello</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--accent-rose)"></span>Uñas</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--accent-sage)"></span>Facial</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--accent-lavender)"></span>Maquillaje</div>
+    <div class="legend-sep"></div>
+    <div class="legend-item"><span class="legend-swatch" style="background:repeating-linear-gradient(135deg, #F6F1EF, #F6F1EF 3px, #F0E9E6 3px, #F0E9E6 6px)"></span>Cita en curso</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:repeating-linear-gradient(135deg, #FBF7EE, #FBF7EE 3px, #F6EFDD 3px, #F6EFDD 6px)"></span>Buffer de limpieza</div>
+  </div>
+
+  <div class="board">
+    <div class="board-scroll">
+      <div class="grid" id="grid" style="--cols:5;">
+        <!-- generated by JS -->
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Detail modal -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <h3 id="mClient">Camila Rojas</h3>
+        <div class="sub" id="mService">Corte + Balayage · con Renata</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-row"><span class="k">Fecha</span><span class="v" id="mDate">Jue 16 jul</span></div>
+      <div class="info-row"><span class="k">Hora</span><span class="v" id="mTime">10:00 – 11:30</span></div>
+      <div class="info-row"><span class="k">Buffer de limpieza</span><span class="v" id="mBuffer">10 min después</span></div>
+      <div class="info-row"><span class="k">Precio</span><span class="v" id="mPrice">S/ 180</span></div>
+      <div class="info-row"><span class="k">Estado</span><span class="v" id="mStatus">Confirmada</span></div>
+      <div class="modal-note"><b>Nota:</b> <span id="mNote">Alérgica a amoniaco, usar tinte orgánico. Prefiere café antes de iniciar.</span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="act-whatsapp" onclick="alert('Recordatorio enviado por WhatsApp ✅')">Enviar recordatorio</button>
+      <button class="act-cancel" onclick="alert('Cita cancelada')">Cancelar cita</button>
+    </div>
+  </div>
+</div>
+
+<!-- New appointment modal -->
+<div class="overlay" id="overlayNew" onclick="closeNewModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <h3>Nueva cita</h3>
+        <div class="sub">Duración, buffer y precio vienen del catálogo</div>
+      </div>
+      <button class="modal-close" onclick="closeNewModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>Clienta</label>
+        <input type="text" id="fClient" placeholder="Ej. Camila Rojas">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Servicio (catálogo)</label>
+          <select id="fService" onchange="onServiceChange()"></select>
+        </div>
+        <div class="field">
+          <label>Hora de inicio</label>
+          <select id="fHour" onchange="onHourChange()"></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Especialista (precio varía según nivel)</label>
+        <select id="fStaff" onchange="onStaffChange()"></select>
+      </div>
+      <div class="auto-fill" id="fSummary"></div>
+
+      <div class="combo-toggle">
+        <label>
+          <label class="switch"><input type="checkbox" id="fComboToggle" onchange="onComboToggle()"><span class="slider"></span></label>
+          <div>Agendar como combo<div class="hint">Dos servicios en paralelo, misma hora, distinta especialista</div></div>
+        </label>
+      </div>
+
+      <div class="combo-block" id="comboBlock">
+        <div class="field-row">
+          <div class="field">
+            <label>2º servicio (combo)</label>
+            <select id="fService2" onchange="onCombo2Change()"></select>
+          </div>
+          <div class="field">
+            <label>2ª especialista</label>
+            <select id="fStaff2" onchange="onCombo2Change()"></select>
+          </div>
+        </div>
+        <div class="auto-fill" id="fSummary2" style="background:#F1ECF4; border-color:#E4D9EC; color:var(--accent-lavender);"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="act-whatsapp" style="flex:1;" onclick="submitNewAppointment()">Agendar cita</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Especialistas ---------- */
+// Nótese que Cabello tiene dos especialistas (senior/junior) para mostrar precio por especialista.
+const staff = [
+  {name:'Renata',  role:'Cabello (Sr.)', cat:'cabello',    color:'#C77B4B'}, // 0
+  {name:'Andrea',  role:'Cabello (Jr.)', cat:'cabello',    color:'#E0A87A'}, // 1
+  {name:'Milagros',role:'Uñas',          cat:'unas',       color:'#B8697A'}, // 2
+  {name:'Fabiola', role:'Facial',        cat:'facial',     color:'#7C9070'}, // 3
+  {name:'Sofía',   role:'Maquillaje',    cat:'maquillaje', color:'#8D7B9E'}, // 4
+];
+
+const hours = Array.from({length:11}, (_,i)=> 9+i); // 9am - 7pm
+
+/* ---------- Catálogo de servicios (fuente única de duración, buffer y precio) ---------- */
+// staffOptions: especialistas habilitadas para el servicio, cada una con su propio precio.
+const catalogServices = [
+  {cat:'cabello',    name:'Corte + Balayage',   dur:1.5,  buffer:10, staffOptions:[{staff:0, price:'S/ 180'},{staff:1, price:'S/ 140'}]},
+  {cat:'cabello',    name:'Corte de puntas',    dur:0.5,  buffer:5,  staffOptions:[{staff:0, price:'S/ 45'}, {staff:1, price:'S/ 35'}]},
+  {cat:'cabello',    name:'Retoque de color',   dur:1.25, buffer:10, staffOptions:[{staff:0, price:'S/ 120'},{staff:1, price:'S/ 95'}]},
+  {cat:'unas',       name:'Uñas gel + diseño',  dur:1,    buffer:5,  staffOptions:[{staff:2, price:'S/ 70'}]},
+  {cat:'unas',       name:'Manicure express',   dur:0.5,  buffer:5,  staffOptions:[{staff:2, price:'S/ 35'}]},
+  {cat:'facial',     name:'Facial hidratante',  dur:1,    buffer:10, staffOptions:[{staff:3, price:'S/ 120'}]},
+  {cat:'facial',     name:'Limpieza profunda',  dur:1,    buffer:10, staffOptions:[{staff:3, price:'S/ 95'}]},
+  {cat:'maquillaje', name:'Maquillaje social',  dur:1,    buffer:5,  staffOptions:[{staff:4, price:'S/ 150'}]},
+  {cat:'maquillaje', name:'Maquillaje express', dur:0.5,  buffer:5,  staffOptions:[{staff:4, price:'S/ 60'}]},
+];
+
+const appointments = [
+  {staff:0, hour:9,    dur:1.5, buffer:10, client:'Camila Rojas', service:'Corte + Balayage', cat:'cabello', status:'confirmada', price:'S/ 180', note:'Alérgica a amoniaco, usar tinte orgánico. Prefiere café antes de iniciar.'},
+  {staff:0, hour:11,   dur:0.5, buffer:5,  client:'Ana Beltrán',  service:'Corte de puntas', cat:'cabello', status:'pendiente', price:'S/ 45', note:'Primera visita, referida por Camila Rojas.'},
+  {staff:2, hour:10,   dur:1,   buffer:5,  client:'Lucía Prado',  service:'Uñas gel + diseño', cat:'unas', status:'confirmada', price:'S/ 70', note:'Le gusta el tono rosa nude, trae su propio esmalte a veces.'},
+  {staff:2, hour:14,   dur:0.5, buffer:5,  client:'Grecia Núñez', service:'Manicure express', cat:'unas', status:'confirmada', price:'S/ 35', note:'Cliente frecuente, siempre puntual.'},
+  {staff:3, hour:9,    dur:1,   buffer:10, client:'Valeria Soto', service:'Facial hidratante', cat:'facial', status:'pendiente', price:'S/ 120', note:'Piel sensible, evitar productos con fragancia.'},
+  {staff:3, hour:15,   dur:1,   buffer:10, client:'Ximena Ríos',  service:'Limpieza profunda', cat:'facial', status:'confirmada', price:'S/ 95', note:'Cumpleaños esta semana — ofrecer cupón de fidelidad.'},
+  {staff:4, hour:12,   dur:1,   buffer:5,  client:'Daniela Cruz', service:'Maquillaje social', cat:'maquillaje', status:'confirmada', price:'S/ 150', note:'Evento en la noche, pidió acabado mate de larga duración.'},
+  {staff:4, hour:16,   dur:0.5, buffer:5,  client:'Rosa Medina',  service:'Maquillaje express', cat:'maquillaje', status:'pendiente', price:'S/ 60', note:'Sesión de fotos, prefiere tonos naturales.'},
+  {staff:1, hour:17,   dur:0.5, buffer:5,  client:'Noelia Vidal', service:'Corte de puntas', cat:'cabello', status:'confirmada', price:'S/ 35', note:'Combo Novia — coordinado con maquillaje (Sofía) a la misma hora.', combo:'Combo Novia con Sofía'},
+  {staff:4, hour:17,   dur:1,   buffer:5,  client:'Noelia Vidal', service:'Maquillaje social', cat:'maquillaje', status:'confirmada', price:'S/ 150', note:'Combo Novia — coordinado con corte (Andrea) a la misma hora.', combo:'Combo Novia con Andrea'},
+];
+
+function fmtHour(h){
+  const hh = Math.floor(h);
+  const mmFrac = h - hh;
+  const mm = mmFrac === 0 ? '00' : String(Math.round(mmFrac*60)).padStart(2,'0');
+  const period = hh >= 12 ? 'pm' : 'am';
+  const h12 = hh > 12 ? hh - 12 : (hh === 0 ? 12 : hh);
+  return `${h12}:${mm} ${period}`;
+}
+function fmtRange(start, dur){
+  return `${fmtHour(start)} – ${fmtHour(start+dur)}`;
+}
+
+/* ---------- Celdas ocupadas: cita en curso + buffer de limpieza ---------- */
+// Esto es lo que vincula Catálogo → Agenda: duración y buffer bloquean tiempo real.
+function getOccupiedCells(){
+  const map = new Map(); // key `${staff}-${hourIndex}` -> 'appt' | 'buffer'
+  appointments.forEach(a=>{
+    const startIdx = hours.indexOf(Math.floor(a.hour));
+    if(startIdx === -1) return;
+    const apptSpan = Math.max(1, Math.ceil(a.dur));
+    const totalSpan = Math.max(apptSpan, Math.ceil((a.dur*60 + (a.buffer||0))/60));
+    for(let k=1;k<apptSpan;k++) map.set(`${a.staff}-${startIdx+k}`, 'appt');
+    for(let k=apptSpan;k<totalSpan;k++) map.set(`${a.staff}-${startIdx+k}`, 'buffer');
+  });
+  return map;
+}
+function isRangeFree(staffIdx, startHour, dur, buffer, ignoreClient){
+  const startIdx = hours.indexOf(Math.floor(startHour));
+  if(startIdx === -1) return false;
+  const apptSpan = Math.max(1, Math.ceil(dur));
+  const totalSpan = Math.max(apptSpan, Math.ceil((dur*60 + (buffer||0))/60));
+  const occ = getOccupiedCells();
+  for(let k=0;k<totalSpan;k++){
+    const idx = startIdx+k;
+    if(idx >= hours.length) return false;
+    const h = hours[idx];
+    const clash = appointments.some(a=> a.staff===staffIdx && Math.floor(a.hour)===h);
+    if(clash || occ.has(`${staffIdx}-${idx}`)) return false;
+  }
+  return true;
+}
+
+function buildGrid(){
+  const grid = document.getElementById('grid');
+  grid.style.setProperty('--cols', staff.length);
+  grid.innerHTML = '';
+
+  const corner = document.createElement('div');
+  corner.className = 'corner';
+  grid.appendChild(corner);
+
+  staff.forEach(s=>{
+    const col = document.createElement('div');
+    col.className = 'staff-col';
+    col.innerHTML = `<div class="staff-avatar" style="background:${s.color}">${s.name[0]}</div>
+      <div><div class="staff-name">${s.name}</div><div class="staff-role">${s.role}</div></div>`;
+    grid.appendChild(col);
+  });
+
+  const occupied = getOccupiedCells();
+  hours.forEach((h, hi)=>{
+    const label = document.createElement('div');
+    label.className = 'hour-label';
+    label.textContent = fmtHour(h);
+    grid.appendChild(label);
+
+    staff.forEach((s, si)=>{
+      const appt = appointments.find(a=> a.staff===si && Math.floor(a.hour)===h);
+
+      if(appt){
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        const ticket = document.createElement('div');
+        ticket.className = `ticket cat-${appt.cat}`;
+        ticket.innerHTML = `
+          <span class="t-badge badge-${appt.status}">${appt.status === 'confirmada' ? 'Confirmada' : 'Pendiente'}</span>
+          <div class="t-time">${fmtRange(appt.hour, appt.dur)}</div>
+          <div class="t-client">${appt.client} ${appt.combo ? '<span class="combo-tag">🔗 Combo</span>' : ''}</div>
+          <div class="t-service">${appt.service}</div>
+          <div class="t-buffer">+${appt.buffer||0} min limpieza</div>`;
+        ticket.onclick = (e)=>{ e.stopPropagation(); openModal(appt); };
+        slot.appendChild(ticket);
+        grid.appendChild(slot);
+      } else if(occupied.get(`${si}-${hi}`) === 'appt'){
+        const filler = document.createElement('div');
+        filler.className = 'slot-occupied';
+        filler.innerHTML = `<span>· cita en curso ·</span>`;
+        grid.appendChild(filler);
+      } else if(occupied.get(`${si}-${hi}`) === 'buffer'){
+        const filler = document.createElement('div');
+        filler.className = 'slot-buffer';
+        filler.innerHTML = `<span>🧹 preparación</span>`;
+        grid.appendChild(filler);
+      } else {
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        slot.onclick = ()=> openNewModal(si, h);
+        grid.appendChild(slot);
+      }
+    });
+  });
+}
+
+function openModal(appt){
+  const ov = document.getElementById('overlay');
+  document.getElementById('mClient').textContent = appt.client;
+  document.getElementById('mService').textContent = `${appt.service} · con ${staff[appt.staff].name}`;
+  document.getElementById('mTime').textContent = fmtRange(appt.hour, appt.dur);
+  document.getElementById('mBuffer').textContent = `${appt.buffer||0} min después`;
+  document.getElementById('mPrice').textContent = appt.price;
+  document.getElementById('mStatus').textContent = appt.status === 'confirmada' ? 'Confirmada' : 'Pendiente de confirmar';
+  document.getElementById('mNote').textContent = appt.note;
+  ov.classList.add('show');
+}
+function closeModal(e){
+  if(e && e.target.id !== 'overlay') return;
+  document.getElementById('overlay').classList.remove('show');
+}
+
+/* ---------- Nueva cita ---------- */
+let newApptCtx = {staff:0, hour:9};
+
+function populateServiceSelect(selectEl){
+  selectEl.innerHTML = catalogServices.map((s,i)=> `<option value="${i}">${s.name} — ${Math.round(s.dur*60)} min + ${s.buffer} min prep</option>`).join('');
+}
+function populateHourSelect(){
+  const sel = document.getElementById('fHour');
+  sel.innerHTML = hours.map(h=> `<option value="${h}">${fmtHour(h)}</option>`).join('');
+}
+function populateStaffSelect(selectEl, svc){
+  selectEl.innerHTML = svc.staffOptions.map(o=> `<option value="${o.staff}">${staff[o.staff].name} — ${o.price}</option>`).join('');
+}
+
+function openNewModal(staffIdx, hour){
+  newApptCtx = {staff: staffIdx ?? 0, hour: hour ?? hours[0]};
+  populateServiceSelect(document.getElementById('fService'));
+  populateServiceSelect(document.getElementById('fService2'));
+  populateHourSelect();
+  document.getElementById('fClient').value = '';
+  document.getElementById('fHour').value = newApptCtx.hour;
+  document.getElementById('fService').selectedIndex = 0;
+  document.getElementById('fComboToggle').checked = false;
+  document.getElementById('comboBlock').classList.remove('show');
+
+  onServiceChange(staffIdx);
+  document.getElementById('fService2').selectedIndex = 0;
+  onCombo2Change();
+  document.getElementById('overlayNew').classList.add('show');
+}
+function closeNewModal(e){
+  if(e && e.target.id !== 'overlayNew') return;
+  document.getElementById('overlayNew').classList.remove('show');
+}
+
+function onServiceChange(preferStaff){
+  const svc = catalogServices[document.getElementById('fService').value];
+  const staffSel = document.getElementById('fStaff');
+  populateStaffSelect(staffSel, svc);
+  if(preferStaff !== undefined && svc.staffOptions.some(o=>o.staff===preferStaff)){
+    staffSel.value = preferStaff;
+  }
+  newApptCtx.staff = parseInt(staffSel.value);
+  updateSummary();
+}
+function onStaffChange(){
+  newApptCtx.staff = parseInt(document.getElementById('fStaff').value);
+  updateSummary();
+}
+function onHourChange(){
+  newApptCtx.hour = parseFloat(document.getElementById('fHour').value);
+  updateSummary();
+  onCombo2Change();
+}
+function updateSummary(){
+  const svc = catalogServices[document.getElementById('fService').value];
+  const staffIdx = newApptCtx.staff;
+  const hour = newApptCtx.hour;
+  const opt = svc.staffOptions.find(o=>o.staff===staffIdx);
+  const free = isRangeFree(staffIdx, hour, svc.dur, svc.buffer);
+  const box = document.getElementById('fSummary');
+  if(free){
+    box.className = 'auto-fill';
+    box.innerHTML = `Bloqueará <b>${fmtRange(hour, svc.dur)}</b> con ${staff[staffIdx].name}, más <b>${svc.buffer} min de limpieza</b> después. Precio (${staff[staffIdx].name}): <b>${opt.price}</b>.`;
+  } else {
+    box.className = 'auto-fill warn';
+    box.innerHTML = `${staff[staffIdx].name} ya tiene una cita u horario de preparación ocupado en ese rango. Elige otra hora o especialista.`;
+  }
+}
+
+function onComboToggle(){
+  document.getElementById('comboBlock').classList.toggle('show', document.getElementById('fComboToggle').checked);
+  onCombo2Change();
+}
+function onCombo2Change(){
+  const svc2 = catalogServices[document.getElementById('fService2').value];
+  const staffSel2 = document.getElementById('fStaff2');
+  populateStaffSelect(staffSel2, svc2);
+  const staffIdx2 = parseInt(staffSel2.value);
+  const hour = newApptCtx.hour;
+  const opt2 = svc2.staffOptions.find(o=>o.staff===staffIdx2);
+  const free2 = isRangeFree(staffIdx2, hour, svc2.dur, svc2.buffer);
+  const box2 = document.getElementById('fSummary2');
+  if(free2){
+    box2.innerHTML = `Combo en paralelo: <b>${fmtRange(hour, svc2.dur)}</b> con ${staff[staffIdx2].name}. Precio: <b>${opt2.price}</b>.`;
+  } else {
+    box2.innerHTML = `${staff[staffIdx2].name} no está libre a esa hora para el combo.`;
+  }
+}
+
+function submitNewAppointment(){
+  const client = document.getElementById('fClient').value.trim();
+  if(!client){ alert('Ingresa el nombre de la clienta.'); return; }
+
+  const svc = catalogServices[document.getElementById('fService').value];
+  const staffIdx = newApptCtx.staff;
+  const hour = newApptCtx.hour;
+  const opt = svc.staffOptions.find(o=>o.staff===staffIdx);
+
+  if(!isRangeFree(staffIdx, hour, svc.dur, svc.buffer)){ alert('Ese horario ya está ocupado (cita o buffer de limpieza) para esta especialista.'); return; }
+
+  const isCombo = document.getElementById('fComboToggle').checked;
+  let svc2, staffIdx2, opt2;
+  if(isCombo){
+    svc2 = catalogServices[document.getElementById('fService2').value];
+    staffIdx2 = parseInt(document.getElementById('fStaff2').value);
+    opt2 = svc2.staffOptions.find(o=>o.staff===staffIdx2);
+    if(staffIdx2 === staffIdx){ alert('Para un combo, elige una especialista distinta en el segundo servicio.'); return; }
+    if(!isRangeFree(staffIdx2, hour, svc2.dur, svc2.buffer)){ alert('La segunda especialista del combo no está libre a esa hora.'); return; }
+  }
+
+  appointments.push({
+    staff: staffIdx, hour, dur: svc.dur, buffer: svc.buffer, client,
+    service: svc.name, cat: svc.cat, status:'pendiente', price: opt.price,
+    note: isCombo ? `Combo con ${staff[staffIdx2].name} (${svc2.name}) a la misma hora.` : 'Cita creada desde Agenda con duración y buffer tomados del Catálogo.',
+    combo: isCombo ? `Combo con ${staff[staffIdx2].name}` : undefined
+  });
+
+  if(isCombo){
+    appointments.push({
+      staff: staffIdx2, hour, dur: svc2.dur, buffer: svc2.buffer, client,
+      service: svc2.name, cat: svc2.cat, status:'pendiente', price: opt2.price,
+      note: `Combo con ${staff[staffIdx].name} (${svc.name}) a la misma hora.`,
+      combo: `Combo con ${staff[staffIdx].name}`
+    });
+  }
+
+  closeNewModal();
+  buildGrid();
+  alert(isCombo
+    ? `Combo agendado: ${svc.name} con ${staff[staffIdx].name} + ${svc2.name} con ${staff[staffIdx2].name}, ambos a las ${fmtHour(hour)}.`
+    : `Cita agendada: ${svc.name} (${Math.round(svc.dur*60)} min + ${svc.buffer} min prep) con ${staff[staffIdx].name} a las ${fmtHour(hour)}.`);
+}
+
+let currentDate = new Date(2026, 6, 16); // Thu Jul 16 2026
+function renderDate(){
+  const opts = {weekday:'long', day:'numeric', month:'long'};
+  let str = currentDate.toLocaleDateString('es-PE', opts);
+  document.getElementById('dateLabel').textContent = str.charAt(0).toUpperCase() + str.slice(1);
+}
+function shiftDay(d){ currentDate.setDate(currentDate.getDate()+d); renderDate(); }
+function goToday(){ currentDate = new Date(2026, 6, 16); renderDate(); }
+
+function toggleNav(e){
+  e.stopPropagation();
+  document.getElementById('navMenu').classList.toggle('open');
+}
+document.addEventListener('click', ()=> document.getElementById('navMenu').classList.remove('open'));
+
+buildGrid();
+renderDate();
+</script>
+</body>
+</html>

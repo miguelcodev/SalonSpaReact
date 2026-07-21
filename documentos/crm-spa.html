@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bellamora — Clientes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF7F4;
+    --surface:#FFFFFF;
+    --ink:#2B2130;
+    --ink-soft:#7A6B76;
+    --ink-faint:#B3A5AC;
+    --accent-rose:#B8697A;
+    --accent-rose-deep:#9A4F60;
+    --accent-gold:#C9A227;
+    --accent-sage:#7C9070;
+    --accent-lavender:#8D7B9E;
+    --accent-terra:#C77B4B;
+    --line:#EBE0E3;
+    --line-soft:#F3ECEE;
+    --radius:14px;
+    --shadow-card: 0 1px 2px rgba(43,33,48,0.06), 0 6px 16px rgba(43,33,48,0.06);
+    --shadow-pop: 0 12px 32px rgba(43,33,48,0.16);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased;}
+  .app{max-width:1360px; margin:0 auto; padding:28px 32px 60px;}
+
+  /* ---------- Topbar ---------- */
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:24px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,var(--accent-rose),var(--accent-gold)); display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-weight:600; font-size:15px;}
+  .brand-name{font-family:'Fraunces',serif; font-size:22px; font-weight:600; letter-spacing:0.2px;}
+  .brand-sub{font-size:11px; color:var(--ink-soft); letter-spacing:1.5px; text-transform:uppercase; margin-top:-2px;}
+
+  /* dropdown */
+  .nav-menu{position:relative;}
+  .nav-trigger{display:flex; align-items:center; gap:7px; background:var(--surface); border:1px solid var(--line); padding:9px 16px; border-radius:999px; font-size:13px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; color:var(--ink);}
+  .nav-trigger svg{transition:transform .15s;}
+  .nav-menu.open .nav-trigger svg{transform:rotate(180deg);}
+  .nav-dropdown{position:absolute; top:calc(100% + 8px); left:0; background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow-pop); width:250px; padding:8px; opacity:0; pointer-events:none; transform:translateY(-6px); transition:all .15s; z-index:30;}
+  .nav-menu.open .nav-dropdown{opacity:1; pointer-events:auto; transform:translateY(0);}
+  .nav-item{display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; text-decoration:none; color:var(--ink); font-size:13.5px; font-weight:600;}
+  .nav-item:hover{background:var(--line-soft);}
+  .nav-item.active{background:#F6E9EC; color:var(--accent-rose-deep);}
+  .nav-item .dot{width:8px; height:8px; border-radius:50%; flex-shrink:0;}
+  .nav-item .soon{margin-left:auto; font-size:9.5px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.4px;}
+  .nav-item.disabled{color:var(--ink-faint); cursor:default;}
+  .nav-item.disabled:hover{background:transparent;}
+  .nav-divider{height:1px; background:var(--line-soft); margin:6px 4px;}
+
+  .topbar-right{display:flex; align-items:center; gap:12px;}
+  .search-box{position:relative;}
+  .search-box input{width:230px; padding:9px 14px 9px 34px; border-radius:999px; border:1px solid var(--line); background:var(--surface); font-size:13px; font-family:'Inter',sans-serif; color:var(--ink); outline:none;}
+  .search-box input:focus{border-color:var(--accent-rose);}
+  .search-box svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-faint);}
+  .btn-primary{background:var(--accent-rose); color:#fff; border:none; padding:10px 18px; border-radius:999px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; font-family:'Inter',sans-serif; box-shadow:0 4px 14px rgba(184,105,122,0.35);}
+
+  /* ---------- Filters ---------- */
+  .filters{display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;}
+  .chip{padding:8px 15px; border-radius:999px; border:1px solid var(--line); background:var(--surface); font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
+  .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  /* ---------- Layout ---------- */
+  .layout{display:grid; grid-template-columns:380px 1fr; gap:20px; align-items:start;}
+
+  .client-list{background:var(--surface); border:1px solid var(--line); border-radius:20px; overflow:hidden; box-shadow:var(--shadow-card);}
+  .client-row{display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line-soft); cursor:pointer; position:relative;}
+  .client-row:last-child{border-bottom:none;}
+  .client-row:hover{background:#FBF3EE;}
+  .client-row.selected{background:#F6E9EC;}
+  .client-row.selected::before{content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent-rose);}
+  .avatar{width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:14px; color:#fff; flex-shrink:0;}
+  .client-name{font-size:13.5px; font-weight:700; line-height:1.3;}
+  .client-meta{font-size:11.5px; color:var(--ink-soft);}
+  .tag{font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:999px; text-transform:uppercase; letter-spacing:.3px;}
+  .tag-vip{background:#FBF0DD; color:#A67E1E;}
+  .tag-inactiva{background:#F3ECEE; color:var(--ink-faint);}
+  .tag-cumple{background:#FDEAE0; color:var(--accent-terra);}
+  .client-side{margin-left:auto; text-align:right;}
+
+  /* ---------- Profile panel ---------- */
+  .profile{background:var(--surface); border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow-card); overflow:hidden;}
+  .profile-head{padding:26px 28px; display:flex; gap:18px; align-items:flex-start; border-bottom:1px solid var(--line-soft); background:linear-gradient(180deg,#FFFDFC,#FBF7F4);}
+  .profile-avatar{width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:22px; color:#fff; flex-shrink:0;}
+  .profile-name{font-family:'Fraunces',serif; font-size:24px; font-weight:600;}
+  .profile-tags{display:flex; gap:6px; margin-top:6px;}
+  .profile-contact{font-size:12.5px; color:var(--ink-soft); margin-top:8px; display:flex; gap:14px;}
+  .profile-actions{margin-left:auto; display:flex; gap:8px;}
+  .icon-btn{width:36px; height:36px; border-radius:50%; border:1px solid var(--line); background:var(--surface); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-soft);}
+  .icon-btn:hover{background:var(--line-soft); color:var(--ink);}
+
+  .stats-row{display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid var(--line-soft);}
+  .stat{padding:16px 20px; border-right:1px solid var(--line-soft); text-align:center;}
+  .stat:last-child{border-right:none;}
+  .stat .num{font-family:'Fraunces',serif; font-size:21px; font-weight:600;}
+  .stat .lbl{font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.4px; margin-top:2px;}
+
+  .section-title{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--ink-soft); padding:20px 28px 10px;}
+
+  .prefs-box{margin:0 28px 20px; background:#FBF7F4; border-radius:12px; padding:14px 16px; font-size:12.5px; color:var(--ink-soft); line-height:1.6;}
+  .prefs-box b{color:var(--ink);}
+
+  .timeline{padding:0 28px 24px;}
+  .t-item{display:flex; gap:14px; padding:14px 0; border-bottom:1px solid var(--line-soft);}
+  .t-item:last-child{border-bottom:none;}
+  .t-dot{width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px;}
+  .t-body{flex:1;}
+  .t-top{display:flex; justify-content:space-between; align-items:baseline;}
+  .t-service{font-size:13px; font-weight:700;}
+  .t-date{font-size:11px; color:var(--ink-faint); font-family:'IBM Plex Mono',monospace;}
+  .t-detail{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .t-price{font-size:12px; font-weight:700; color:var(--accent-sage);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:22px;">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">Bellamora</div>
+          <div class="brand-sub">Clientes</div>
+        </div>
+      </div>
+
+      <div class="nav-menu" id="navMenu">
+        <button class="nav-trigger" onclick="toggleNav(event)">
+          Módulos
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="nav-dropdown">
+          <a class="nav-item" href="agenda-spa.html"><span class="dot" style="background:var(--accent-terra)"></span> Agenda de citas</a>
+          <a class="nav-item active" href="crm-spa.html"><span class="dot" style="background:var(--accent-rose)"></span> Clientes (CRM)</a>
+          <div class="nav-divider"></div>
+          <a class="nav-item" href="catalogo-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Catálogo de servicios</a>
+          <a class="nav-item" href="promociones-spa.html"><span class="dot" style="background:var(--accent-gold)"></span> Promociones</a>
+          <a class="nav-item" href="whatsapp-spa.html"><span class="dot" style="background:#4C7A5A"></span> Mensajería WhatsApp</a>
+          <a class="nav-item" href="reportes-spa.html"><span class="dot" style="background:var(--accent-lavender)"></span> Reportes</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="text" placeholder="Buscar clienta..." oninput="filterList(this.value)">
+      </div>
+      <button class="btn-primary">＋ Nueva clienta</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <button class="chip active" onclick="setFilter('todas', this)">Todas (7)</button>
+    <button class="chip" onclick="setFilter('vip', this)">VIP</button>
+    <button class="chip" onclick="setFilter('cumple', this)">🎂 Cumpleañeras del mes</button>
+    <button class="chip" onclick="setFilter('inactiva', this)">Inactivas 60+ días</button>
+  </div>
+
+  <div class="layout">
+    <div class="client-list" id="clientList"></div>
+    <div class="profile" id="profile"></div>
+  </div>
+
+</div>
+
+<script>
+const clients = [
+  {
+    name:'Camila Rojas', initials:'CR', color:'#C77B4B', phone:'+51 987 654 321', email:'camila.rojas@mail.com',
+    tags:['vip'], visits:14, spent:'S/ 2,340', since:'ene 2024', last:'hace 3 días',
+    prefs:'Alérgica a amoniaco, usar tinte orgánico. Prefiere café antes de iniciar. Cliente muy puntual.',
+    history:[
+      {date:'12 jul', service:'Corte + Balayage', detail:'con Renata', price:'S/ 180', icon:'✂️', color:'#FDEAE0'},
+      {date:'02 jun', service:'Retoque de color', detail:'con Renata', price:'S/ 120', icon:'✂️', color:'#FDEAE0'},
+      {date:'14 abr', service:'Manicure gel', detail:'con Milagros', price:'S/ 70', icon:'💅', color:'#F6E9EC'},
+    ]
+  },
+  {
+    name:'Lucía Prado', initials:'LP', color:'#B8697A', phone:'+51 976 112 340', email:'lucia.prado@mail.com',
+    tags:['cumple'], visits:9, spent:'S/ 980', since:'mar 2024', last:'hace 1 semana',
+    prefs:'Le gusta el tono rosa nude, a veces trae su propio esmalte. Cumpleaños el 28 de julio.',
+    history:[
+      {date:'09 jul', service:'Uñas gel + diseño', detail:'con Milagros', price:'S/ 70', icon:'💅', color:'#F6E9EC'},
+      {date:'11 jun', service:'Manicure express', detail:'con Milagros', price:'S/ 35', icon:'💅', color:'#F6E9EC'},
+    ]
+  },
+  {
+    name:'Valeria Soto', initials:'VS', color:'#7C9070', phone:'+51 955 220 118', email:'valeria.soto@mail.com',
+    tags:[], visits:5, spent:'S/ 610', since:'jun 2024', last:'hace 2 días',
+    prefs:'Piel sensible, evitar productos con fragancia. Prefiere citas por la mañana.',
+    history:[
+      {date:'14 jul', service:'Facial hidratante', detail:'con Fabiola', price:'S/ 120', icon:'🌿', color:'#EAF0E4'},
+      {date:'20 may', service:'Limpieza profunda', detail:'con Fabiola', price:'S/ 95', icon:'🌿', color:'#EAF0E4'},
+    ]
+  },
+  {
+    name:'Daniela Cruz', initials:'DC', color:'#8D7B9E', phone:'+51 944 887 220', email:'daniela.cruz@mail.com',
+    tags:['vip'], visits:11, spent:'S/ 1,540', since:'nov 2023', last:'hoy',
+    prefs:'Eventos frecuentes, prefiere acabado mate de larga duración. Cliente referida por Camila Rojas.',
+    history:[
+      {date:'16 jul', service:'Maquillaje social', detail:'con Sofía', price:'S/ 150', icon:'💄', color:'#F1ECF4'},
+      {date:'02 jul', service:'Maquillaje express', detail:'con Sofía', price:'S/ 60', icon:'💄', color:'#F1ECF4'},
+    ]
+  },
+  {
+    name:'Grecia Núñez', initials:'GN', color:'#B8697A', phone:'+51 933 441 902', email:'grecia.nunez@mail.com',
+    tags:[], visits:3, spent:'S/ 210', since:'may 2025', last:'hace 4 días',
+    prefs:'Cliente frecuente los sábados, siempre puntual.',
+    history:[
+      {date:'12 jul', service:'Manicure express', detail:'con Milagros', price:'S/ 35', icon:'💅', color:'#F6E9EC'},
+    ]
+  },
+  {
+    name:'Ximena Ríos', initials:'XR', color:'#7C9070', phone:'+51 922 774 501', email:'ximena.rios@mail.com',
+    tags:['cumple'], visits:6, spent:'S/ 720', since:'feb 2024', last:'hace 3 semanas',
+    prefs:'Cumpleaños esta semana. Ofrecer cupón de fidelidad en la próxima visita.',
+    history:[
+      {date:'25 jun', service:'Limpieza profunda', detail:'con Fabiola', price:'S/ 95', icon:'🌿', color:'#EAF0E4'},
+    ]
+  },
+  {
+    name:'Ana Beltrán', initials:'AB', color:'#C77B4B', phone:'+51 911 220 875', email:'ana.beltran@mail.com',
+    tags:['inactiva'], visits:1, spent:'S/ 45', since:'ago 2024', last:'hace 68 días',
+    prefs:'Primera visita fue referida por Camila Rojas. No ha vuelto desde entonces — candidata a campaña de reactivación.',
+    history:[
+      {date:'09 may', service:'Corte de puntas', detail:'con Renata', price:'S/ 45', icon:'✂️', color:'#FDEAE0'},
+    ]
+  },
+];
+
+let selectedIndex = 0;
+let currentFilter = 'todas';
+
+function tagLabel(t){
+  return {vip:'VIP', cumple:'🎂 Cumple', inactiva:'Inactiva'}[t];
+}
+
+function renderList(){
+  const list = document.getElementById('clientList');
+  list.innerHTML = '';
+  const filtered = clients.filter(c=> currentFilter==='todas' || c.tags.includes(currentFilter));
+  filtered.forEach((c)=>{
+    const realIndex = clients.indexOf(c);
+    const row = document.createElement('div');
+    row.className = 'client-row' + (realIndex===selectedIndex ? ' selected' : '');
+    row.onclick = ()=>{ selectedIndex = realIndex; renderList(); renderProfile(); };
+    row.innerHTML = `
+      <div class="avatar" style="background:${c.color}">${c.initials}</div>
+      <div>
+        <div class="client-name">${c.name}</div>
+        <div class="client-meta">${c.visits} visitas · última hace ${c.last.replace('hace ','')}</div>
+      </div>
+      <div class="client-side">
+        ${c.tags.map(t=>`<span class="tag tag-${t}">${tagLabel(t)}</span>`).join(' ')}
+      </div>`;
+    list.appendChild(row);
+  });
+  if(filtered.length===0){
+    list.innerHTML = '<div style="padding:30px; text-align:center; color:var(--ink-faint); font-size:13px;">No hay clientas en este filtro.</div>';
+  }
+}
+
+function renderProfile(){
+  const c = clients[selectedIndex];
+  const p = document.getElementById('profile');
+  p.innerHTML = `
+    <div class="profile-head">
+      <div class="profile-avatar" style="background:${c.color}">${c.initials}</div>
+      <div>
+        <div class="profile-name">${c.name}</div>
+        <div class="profile-tags">${c.tags.map(t=>`<span class="tag tag-${t}">${tagLabel(t)}</span>`).join(' ') || '<span class="client-meta">Clienta regular</span>'}</div>
+        <div class="profile-contact">
+          <span>📱 ${c.phone}</span>
+          <span>✉️ ${c.email}</span>
+          <span>Clienta desde ${c.since}</span>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <div class="icon-btn" title="Enviar WhatsApp">💬</div>
+        <div class="icon-btn" title="Agendar cita">📅</div>
+        <div class="icon-btn" title="Editar">✎</div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat"><div class="num">${c.visits}</div><div class="lbl">Visitas</div></div>
+      <div class="stat"><div class="num">${c.spent}</div><div class="lbl">Total gastado</div></div>
+      <div class="stat"><div class="num">${c.last}</div><div class="lbl">Última visita</div></div>
+      <div class="stat"><div class="num">${(parseInt(c.spent.replace(/[^\d]/g,''))/c.visits).toFixed(0)}</div><div class="lbl">Ticket prom. (S/)</div></div>
+    </div>
+
+    <div class="section-title">Preferencias y notas</div>
+    <div class="prefs-box">${c.prefs}</div>
+
+    <div class="section-title">Historial de servicios</div>
+    <div class="timeline">
+      ${c.history.map(h=>`
+        <div class="t-item">
+          <div class="t-dot" style="background:${h.color}">${h.icon}</div>
+          <div class="t-body">
+            <div class="t-top">
+              <span class="t-service">${h.service}</span>
+              <span class="t-date">${h.date}</span>
+            </div>
+            <div class="t-detail">${h.detail}</div>
+          </div>
+          <div class="t-price">${h.price}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function setFilter(f, el){
+  currentFilter = f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  selectedIndex = clients.findIndex(c=> f==='todas' || c.tags.includes(f));
+  if(selectedIndex === -1) selectedIndex = 0;
+  renderList();
+  renderProfile();
+}
+
+function filterList(query){
+  const list = document.getElementById('clientList');
+  list.innerHTML = '';
+  const q = query.toLowerCase();
+  clients.forEach((c, i)=>{
+    if(!c.name.toLowerCase().includes(q)) return;
+    const row = document.createElement('div');
+    row.className = 'client-row' + (i===selectedIndex ? ' selected' : '');
+    row.onclick = ()=>{ selectedIndex = i; renderList(); renderProfile(); };
+    row.innerHTML = `
+      <div class="avatar" style="background:${c.color}">${c.initials}</div>
+      <div>
+        <div class="client-name">${c.name}</div>
+        <div class="client-meta">${c.visits} visitas · última hace ${c.last.replace('hace ','')}</div>
+      </div>
+      <div class="client-side">${c.tags.map(t=>`<span class="tag tag-${t}">${tagLabel(t)}</span>`).join(' ')}</div>`;
+    list.appendChild(row);
+  });
+}
+
+function toggleNav(e){
+  e.stopPropagation();
+  document.getElementById('navMenu').classList.toggle('open');
+}
+document.addEventListener('click', ()=> document.getElementById('navMenu').classList.remove('open'));
+
+renderList();
+renderProfile();
+</script>
+</body>
+</html>

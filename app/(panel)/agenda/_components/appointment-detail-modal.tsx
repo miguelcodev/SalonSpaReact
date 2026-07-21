@@ -4,13 +4,14 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useModal } from "./agenda-modal-context";
-import { cancelAppointment } from "@/lib/agenda/actions";
+import { cancelAppointment, sendAppointmentReminder } from "@/lib/agenda/actions";
 import { formatTimeRange } from "@/lib/agenda/grid";
 
 export function AppointmentDetailModal() {
   const { detailModal, closeDetailModal } = useModal();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reminderSent, setReminderSent] = useState(false);
 
   if (!detailModal.isOpen || !detailModal.appointment) {
     return null;
@@ -34,6 +35,21 @@ export function AppointmentDetailModal() {
     }
 
     closeDetailModal();
+  }
+
+  async function handleSendReminder() {
+    setIsLoading(true);
+    setError(null);
+
+    const result = await sendAppointmentReminder(appt.id);
+    if (!result.ok) {
+      setError(result.error);
+      setIsLoading(false);
+      return;
+    }
+
+    setReminderSent(true);
+    setIsLoading(false);
   }
 
   return (
@@ -133,23 +149,37 @@ export function AppointmentDetailModal() {
         </div>
 
         {/* Actions */}
-        <div className="px-6 py-5 border-t border-color-line-soft flex gap-2">
+        <div className="px-6 py-5 border-t border-color-line-soft space-y-2">
           <Button
             variant="outline"
-            className="flex-1"
-            onClick={closeDetailModal}
-            disabled={isLoading}
+            className="w-full"
+            onClick={handleSendReminder}
+            disabled={isLoading || reminderSent || appt.status === "cancelada"}
           >
-            Cerrar
+            {reminderSent
+              ? "Recordatorio encolado ✓"
+              : isLoading
+                ? "Enviando..."
+                : "Enviar recordatorio por WhatsApp"}
           </Button>
-          <Button
-            variant="destructive"
-            className="flex-1"
-            onClick={handleCancel}
-            disabled={isLoading}
-          >
-            {isLoading ? "Cancelando..." : "Cancelar cita"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={closeDetailModal}
+              disabled={isLoading}
+            >
+              Cerrar
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={handleCancel}
+              disabled={isLoading}
+            >
+              {isLoading ? "Cancelando..." : "Cancelar cita"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
