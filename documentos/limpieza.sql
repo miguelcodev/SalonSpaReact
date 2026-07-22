@@ -52,6 +52,7 @@ drop table if exists salons                 cascade;
 -- 3. FUNCIONES (los triggers ya cayeron con sus tablas)
 -- ------------------------------------------------------------
 drop function if exists fn_current_salon_id()                              cascade;
+drop function if exists fn_add_minutes(timestamptz, int)                   cascade;
 drop function if exists fn_is_slot_free(uuid, timestamptz, timestamptz, int, uuid) cascade;
 drop function if exists fn_create_combo_appointments(uuid, uuid, uuid, jsonb)      cascade;
 drop function if exists fn_register_sale(uuid, uuid, uuid, text, jsonb, int, uuid) cascade;

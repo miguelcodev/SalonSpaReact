@@ -143,19 +143,31 @@ create table appointments (
   constraint chk_time_order check (end_time > start_time)
 );
 
+-- Suma minutos a un timestamptz, marcada IMMUTABLE explícitamente. El
+-- operador nativo `timestamptz + interval` es STABLE en Postgres (en
+-- general un interval puede traer meses/años, cuyo resultado depende de la
+-- timezone de sesión) — pero acá el interval SIEMPRE es minutos puros, así
+-- que el resultado es determinístico sin importar la timezone, y envolverlo
+-- en una función IMMUTABLE es seguro. Sin esto, la constraint `no_overlap`
+-- de abajo falla al crearse con "functions in index expression must be
+-- marked IMMUTABLE" — make_interval() sí es IMMUTABLE, pero la suma no lo es
+-- por sí sola.
+create or replace function fn_add_minutes(p_time timestamptz, p_minutes int)
+returns timestamptz
+language sql
+immutable
+as $$
+  select p_time + (p_minutes || ' minutes')::interval;
+$$;
+
 -- Garantía anti doble-reserva: Postgres, no la aplicación, impide que un
 -- especialista tenga dos citas cuyos rangos [inicio, fin + buffer] se solapen.
--- Las citas canceladas liberan el horario. make_interval es immutable, por lo
--- que puede usarse dentro de la expresión del índice GiST.
--- ESTE ALTER NO SE APLICO POR ERROR
+-- Las citas canceladas liberan el horario.
 alter table appointments add constraint no_overlap
   exclude using gist (
     staff_id with =,
-    tstzrange(start_time, end_time + make_interval(mins => buffer_minutes)) with &&
+    tstzrange(start_time, fn_add_minutes(end_time, buffer_minutes)) with &&
   ) where (status <> 'cancelada');
-
-  -- NO SE APLICO
-  
 
 create index idx_appointments_staff_time on appointments (staff_id, start_time);
 create index idx_appointments_salon_time on appointments (salon_id, start_time);
@@ -398,8 +410,8 @@ as $$
     where a.staff_id = p_staff_id
       and a.status <> 'cancelada'
       and (p_exclude_appointment is null or a.id <> p_exclude_appointment)
-      and tstzrange(a.start_time, a.end_time + make_interval(mins => a.buffer_minutes))
-          && tstzrange(p_start, p_end + make_interval(mins => p_buffer_minutes))
+      and tstzrange(a.start_time, fn_add_minutes(a.end_time, a.buffer_minutes))
+          && tstzrange(p_start, fn_add_minutes(p_end, p_buffer_minutes))
   );
 $$;
 
@@ -448,7 +460,7 @@ begin
       raise exception 'No hay precio definido de % para el especialista %', v_service.name, v_staff_id;
     end if;
 
-    v_end := v_start + make_interval(mins => v_service.duration_minutes);
+    v_end := fn_add_minutes(v_start, v_service.duration_minutes);
 
     if not fn_is_slot_free(v_staff_id, v_start, v_end, v_service.buffer_minutes) then
       raise exception 'Horario ocupado: % de % a %', v_staff_id, v_start, v_end;
