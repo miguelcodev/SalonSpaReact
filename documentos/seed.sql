@@ -5,6 +5,15 @@
 -- Ejecutar después de schema.sql
 -- ============================================================
 
+-- Este script asume privilegios de superusuario para saltar RLS (inserta
+-- filas cruzando distintos salon_id a propósito, entre otras cosas). Si esta
+-- sesión de SQL Editor corrió antes verificacion.sql — que cambia el rol a
+-- 'authenticated' para probar RLS (TEST 8) — hay que devolverlo explícito
+-- a 'postgres' aquí; de lo contrario cualquier insert de aquí en adelante
+-- choca con RLS de verdad y falla con "new row violates row-level security
+-- policy" en la primera tabla que la sesión toque.
+reset role;
+
 -- ------------------------------------------------------------
 -- 1. SALÓN
 -- ------------------------------------------------------------

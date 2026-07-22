@@ -9,7 +9,23 @@ export interface SaleListEntry {
   status: SaleStatus;
   total_cents: number;
   item_count: number;
+  product_names: string[];
+  has_appointment: boolean;
+  payment_method: PaymentMethod | null;
   created_at: string;
+}
+
+export interface SalesFilters {
+  channel?: SaleChannel;
+  status?: SaleStatus;
+  search?: string;
+  page: number;
+  pageSize: number;
+}
+
+export interface SalesPage {
+  sales: SaleListEntry[];
+  totalCount: number;
 }
 
 export interface SaleItemDetail {

@@ -1,46 +1,76 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import type { SaleListEntry, SaleDetail, AppointmentForSale } from "./types";
+import type { SaleListEntry, SaleDetail, AppointmentForSale, SalesFilters, SalesPage } from "./types";
 
 type SaleListRow = {
   id: string;
   channel: string;
   status: string;
   total_cents: number;
+  appointment_id: string | null;
   created_at: string;
   client: { name: string } | null;
-  sale_items: { id: string }[];
+  sale_items: { product: { name: string } | null }[];
+  payments: { method: string }[];
 };
 
-export async function getSales(): Promise<SaleListEntry[]> {
+/**
+ * Sales list with filters (channel/status/client name), search, and real
+ * pagination (exact count from Postgres, not an estimate) — the list can
+ * grow well past a single page once a salon uses this daily.
+ */
+export async function getSales(filters: SalesFilters): Promise<SalesPage> {
   const supabase = await createClient();
+  const { channel, status, search, page, pageSize } = filters;
 
-  const { data, error } = await supabase
+  // Searching by client name requires an inner join on clients so PostgREST
+  // can filter the embedded relation — walk-in sales with no client_id are
+  // naturally excluded from search results, which is the correct behavior
+  // (there's no name to match against).
+  const clientJoin = search ? "clients!inner" : "clients";
+
+  let query = supabase
     .from("sales")
     .select(
-      `id, channel, status, total_cents, created_at,
-      client:clients (name),
-      sale_items (id)
-    `
+      `id, channel, status, total_cents, appointment_id, created_at,
+      client:${clientJoin} (name),
+      sale_items (product:products (name)),
+      payments (method)
+    `,
+      { count: "exact" }
     )
-    .order("created_at", { ascending: false })
-    .limit(100);
+    .order("created_at", { ascending: false });
+
+  if (channel) query = query.eq("channel", channel);
+  if (status) query = query.eq("status", status);
+  if (search) query = query.ilike("client.name", `%${search}%`);
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
 
   if (error) {
     console.error("Error fetching sales:", error);
-    return [];
+    return { sales: [], totalCount: 0 };
   }
 
-  return (data as unknown as SaleListRow[]).map((row) => ({
+  const sales = (data as unknown as SaleListRow[]).map((row) => ({
     id: row.id,
     client_name: row.client?.name ?? null,
     channel: row.channel as SaleListEntry["channel"],
     status: row.status as SaleListEntry["status"],
     total_cents: row.total_cents,
     item_count: row.sale_items.length,
+    product_names: row.sale_items.map((i) => i.product?.name).filter((n): n is string => !!n),
+    has_appointment: row.appointment_id !== null,
+    payment_method: (row.payments[0]?.method as SaleListEntry["payment_method"]) ?? null,
     created_at: row.created_at,
   }));
+
+  return { sales, totalCount: count ?? 0 };
 }
 
 type SaleDetailRow = {

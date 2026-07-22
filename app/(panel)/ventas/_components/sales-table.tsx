@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Calendar } from "lucide-react";
 import type { SaleListEntry } from "@/lib/ventas/types";
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -7,17 +8,33 @@ const CHANNEL_LABELS: Record<string, string> = {
   cita: "Cita",
 };
 
+const METHOD_LABELS: Record<string, string> = {
+  efectivo: "Efectivo",
+  yape: "Yape",
+  plin: "Plin",
+  stripe: "Tarjeta",
+};
+
 const STATUS_STYLES: Record<string, string> = {
   pagado: "bg-green-50 text-color-accent-sage",
   pendiente: "bg-yellow-50 text-yellow-700",
   anulado: "bg-color-line-soft text-color-ink-faint",
 };
 
+function describeItems(sale: SaleListEntry): string {
+  if (sale.product_names.length === 0) {
+    return sale.has_appointment ? "Solo servicio" : "—";
+  }
+  const [first, ...rest] = sale.product_names;
+  if (rest.length === 0) return first;
+  return `${first} +${rest.length} más`;
+}
+
 export function SalesTable({ sales }: { sales: SaleListEntry[] }) {
   if (sales.length === 0) {
     return (
       <div className="bg-color-surface border border-color-line rounded-2xl shadow-card p-8 text-center text-sm text-color-ink-faint">
-        Todavía no hay ventas registradas.
+        No hay ventas con estos filtros.
       </div>
     );
   }
@@ -31,10 +48,13 @@ export function SalesTable({ sales }: { sales: SaleListEntry[] }) {
               Clienta
             </th>
             <th className="text-left text-[10.5px] uppercase tracking-wide text-color-ink-soft px-4 py-3.5">
+              Contenido
+            </th>
+            <th className="text-left text-[10.5px] uppercase tracking-wide text-color-ink-soft px-4 py-3.5">
               Canal
             </th>
             <th className="text-left text-[10.5px] uppercase tracking-wide text-color-ink-soft px-4 py-3.5">
-              Ítems
+              Pago
             </th>
             <th className="text-left text-[10.5px] uppercase tracking-wide text-color-ink-soft px-4 py-3.5">
               Total
@@ -49,7 +69,10 @@ export function SalesTable({ sales }: { sales: SaleListEntry[] }) {
         </thead>
         <tbody>
           {sales.map((sale) => (
-            <tr key={sale.id} className="border-b border-color-line-soft last:border-b-0 hover:bg-color-bg">
+            <tr
+              key={sale.id}
+              className="border-b border-color-line-soft last:border-b-0 hover:bg-color-bg"
+            >
               <td className="px-4 py-3">
                 <Link
                   href={`/ventas/${sale.id}`}
@@ -59,10 +82,22 @@ export function SalesTable({ sales }: { sales: SaleListEntry[] }) {
                 </Link>
               </td>
               <td className="px-4 py-3 text-xs text-color-ink-soft">
+                <div className="flex items-center gap-1.5">
+                  {sale.has_appointment && (
+                    <Calendar
+                      size={12}
+                      className="text-color-accent-terra flex-shrink-0"
+                      aria-label="Incluye servicio"
+                    />
+                  )}
+                  <span className="truncate max-w-[180px]">{describeItems(sale)}</span>
+                </div>
+              </td>
+              <td className="px-4 py-3 text-xs text-color-ink-soft">
                 {CHANNEL_LABELS[sale.channel]}
               </td>
               <td className="px-4 py-3 text-xs text-color-ink-soft">
-                {sale.item_count} producto{sale.item_count !== 1 ? "s" : ""}
+                {sale.payment_method ? METHOD_LABELS[sale.payment_method] : "—"}
               </td>
               <td className="px-4 py-3 font-mono text-sm font-bold text-color-ink">
                 S/ {(sale.total_cents / 100).toFixed(2)}

@@ -5,6 +5,13 @@
 -- No deja datos residuales: todo lo que inserta lo borra o revierte.
 -- ============================================================
 
+-- Por si esta sesión quedó con el rol cambiado de una corrida parcial
+-- anterior (ej. solo se seleccionó y corrió el TEST 8 sin llegar a su
+-- reset final) — TEST 8 más abajo cambia el rol a 'authenticated' para
+-- probar RLS y lo devuelve a 'postgres' al final; esto asegura que
+-- siempre arranca en el rol correcto sin importar el historial de la sesión.
+reset role;
+
 -- ------------------------------------------------------------
 -- TEST 1 — Constraint no_overlap: doble reserva del MISMO
 -- especialista debe fallar (Renata ya tiene 9:00–10:30 +10 buffer)

@@ -18,7 +18,7 @@ export default async function LoginPage() {
             <span className="text-white font-serif font-bold text-lg">B</span>
           </div>
           <h1 className="text-3xl font-serif font-semibold text-color-ink">
-            Bellamora
+            BellaSpa
           </h1>
           <p className="text-xs text-color-ink-soft uppercase tracking-widest mt-1">
             Gestión de salón

@@ -147,11 +147,15 @@ create table appointments (
 -- especialista tenga dos citas cuyos rangos [inicio, fin + buffer] se solapen.
 -- Las citas canceladas liberan el horario. make_interval es immutable, por lo
 -- que puede usarse dentro de la expresión del índice GiST.
+-- ESTE ALTER NO SE APLICO POR ERROR
 alter table appointments add constraint no_overlap
   exclude using gist (
     staff_id with =,
     tstzrange(start_time, end_time + make_interval(mins => buffer_minutes)) with &&
   ) where (status <> 'cancelada');
+
+  -- NO SE APLICO
+  
 
 create index idx_appointments_staff_time on appointments (staff_id, start_time);
 create index idx_appointments_salon_time on appointments (salon_id, start_time);
