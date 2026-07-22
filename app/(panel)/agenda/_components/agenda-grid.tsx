@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { getStaffColumns, getAppointmentsForDay } from "@/lib/agenda/queries";
 import { buildHourSlots, computeOccupiedCells } from "@/lib/agenda/grid";
 import { AgendaGridCell } from "./agenda-grid-cell";
@@ -140,11 +141,15 @@ export async function AgendaGrid({
                   </div>
                 ))}
 
-                {/* Hour rows */}
+                {/* Hour rows — Fragment, not a div: this container is a CSS
+                    Grid, so a wrapping element here would itself become the
+                    grid item (landing in a single column track) instead of
+                    letting the hour label + each staff cell auto-place into
+                    their own column, one row at a time. */}
                 {hourSlots.map((slot, slotIndex) => (
-                  <div key={slot.hour}>
+                  <Fragment key={slot.hour}>
                     {/* Hour label */}
-                    <div className="h-20 border-b border-r border-color-line-soft px-2 py-1 text-right bg-color-line-soft text-xs text-color-ink-faint font-mono font-semibold flex items-start justify-end">
+                    <div className="h-20 border-b border-r border-color-line-soft px-2 py-1.5 text-right bg-color-line-soft text-xs text-color-ink-faint font-mono font-semibold flex items-start justify-end">
                       {slot.label}
                     </div>
 
@@ -187,7 +192,7 @@ export async function AgendaGrid({
                         </div>
                       );
                     })}
-                  </div>
+                  </Fragment>
                 ))}
               </div>
             </div>

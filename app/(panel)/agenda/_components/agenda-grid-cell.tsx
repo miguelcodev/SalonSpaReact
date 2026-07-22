@@ -83,8 +83,8 @@ export function AgendaGridCell({
     // Later slots of an appointment that started earlier and runs past 1h.
     // Non-clickable: still occupied, just not the row with the details.
     return (
-      <div className="h-full rounded-lg bg-[repeating-linear-gradient(135deg,#F6F1EF,#F6F1EF_6px,#F0E9E6_6px,#F0E9E6_12px)] flex items-center justify-center">
-        <span className="text-[10px] text-color-ink-faint font-semibold">
+      <div className="h-full rounded-lg bg-[repeating-linear-gradient(135deg,#F6F1EF,#F6F1EF_6px,#F0E9E6_6px,#F0E9E6_12px)] flex items-center justify-center px-1">
+        <span className="text-[10px] text-color-ink-faint font-semibold whitespace-nowrap">
           · cita en curso ·
         </span>
       </div>
@@ -93,9 +93,10 @@ export function AgendaGridCell({
 
   if (type === "buffer") {
     return (
-      <div className="h-full rounded-lg bg-[repeating-linear-gradient(135deg,#FBF7EE,#FBF7EE_6px,#F6EFDD_6px,#F6EFDD_12px)] flex items-center justify-center">
-        <span className="text-[10px] text-yellow-700 font-semibold">
-          🧹 preparación
+      <div className="h-full rounded-lg bg-[repeating-linear-gradient(135deg,#FBF7EE,#FBF7EE_6px,#F6EFDD_6px,#F6EFDD_12px)] flex flex-col items-center justify-center gap-0.5 px-1">
+        <span className="text-xs leading-none">🧹</span>
+        <span className="text-[9px] text-yellow-700 font-bold uppercase tracking-wide whitespace-nowrap">
+          Preparación
         </span>
       </div>
     );
