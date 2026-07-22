@@ -34,7 +34,7 @@ export function Topbar() {
             </div>
             <div>
               <div className="font-serif font-semibold text-color-ink">
-                Bellamora
+                BellaSpa
               </div>
               <div className="text-xs text-color-ink-soft uppercase tracking-widest">
                 {ACTIVE_MODULES.find((m) => pathname.startsWith(m.href))?.name.split(

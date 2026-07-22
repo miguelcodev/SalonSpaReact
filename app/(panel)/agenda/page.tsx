@@ -3,12 +3,17 @@ import { AgendaDateNav } from "./_components/agenda-date-nav";
 import { AgendaGrid } from "./_components/agenda-grid";
 
 interface AgendaPageProps {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; staff?: string; status?: string; q?: string }>;
 }
 
 export default async function AgendaPage({ searchParams }: AgendaPageProps) {
   const params = await searchParams;
   const dateISO = params.date || "2026-07-16"; // Default to seed data date
+  const staffFilter = params.staff ? params.staff.split(",") : [];
+  const statusFilter =
+    params.status === "pendiente" || params.status === "confirmada"
+      ? params.status
+      : undefined;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
@@ -33,7 +38,12 @@ export default async function AgendaPage({ searchParams }: AgendaPageProps) {
           </div>
         }
       >
-        <AgendaGrid dateISO={dateISO} />
+        <AgendaGrid
+          dateISO={dateISO}
+          staffFilter={staffFilter}
+          statusFilter={statusFilter}
+          searchQuery={params.q}
+        />
       </Suspense>
     </div>
   );

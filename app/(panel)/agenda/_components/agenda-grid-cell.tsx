@@ -8,6 +8,11 @@ interface AgendaGridCellProps {
   slotHour: number;
   appointment?: AppointmentWithRelations;
   type: "empty" | "appt" | "appt-continuation" | "buffer";
+  /** True when a status/search filter is active and this appointment
+   * doesn't match it — dimmed instead of hidden, since hiding it would
+   * misrepresent the slot as bookable (buffer/continuation logic depends
+   * on every real appointment staying "occupied" regardless of filters). */
+  muted?: boolean;
 }
 
 export function AgendaGridCell({
@@ -15,6 +20,7 @@ export function AgendaGridCell({
   slotHour,
   appointment,
   type,
+  muted = false,
 }: AgendaGridCellProps) {
   const { openDetailModal, openNewModal } = useModal();
 
@@ -25,7 +31,7 @@ export function AgendaGridCell({
     return (
       <div
         onClick={() => openDetailModal(appointment)}
-        className="relative cursor-pointer h-full overflow-hidden rounded-lg bg-white border border-color-line shadow-card hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col"
+        className={`relative cursor-pointer h-full overflow-hidden rounded-lg bg-white border border-color-line shadow-card hover:shadow-lg hover:-translate-y-0.5 transition-all flex flex-col ${muted ? "opacity-35 grayscale-[40%]" : ""}`}
       >
         <div
           className="absolute left-0 top-0 bottom-0 w-1"
