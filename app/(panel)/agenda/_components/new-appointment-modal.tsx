@@ -51,7 +51,7 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
 
   const selectedServiceId = watch("serviceId");
   const selectedStaffId = watch("staffId");
-  const selectedHour = newModal.selectedHour || 9;
+  const [selectedHour, setSelectedHour] = useState(newModal.selectedHour || 9);
 
   // Load services once on mount
   useEffect(() => {
@@ -60,6 +60,36 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
       setServicesLoading(false);
     });
   }, []);
+
+  // The modal component instance persists across opens/closes (it's always
+  // mounted, just returns null while closed) — so state from a previous
+  // open (a different grid cell's staff/hour) would otherwise leak into
+  // the next one. Re-sync everything whenever it opens.
+  useEffect(() => {
+    if (!newModal.isOpen) return;
+    setSelectedHour(newModal.selectedHour || 9);
+    reset({
+      clientId: "",
+      serviceId: "",
+      staffId: newModal.selectedStaffId || "",
+      startTimeISO: "",
+      notes: "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newModal.isOpen, newModal.selectedHour, newModal.selectedStaffId]);
+
+  // startTimeISO is the field newAppointmentSchema actually validates, but
+  // nothing wrote it into react-hook-form's tracked state — it stayed at
+  // its defaultValue "" forever. zodResolver validates the form BEFORE
+  // onSubmit runs, so every submit silently failed validation on this one
+  // empty field and onSubmit was never called — the reported "el botón no
+  // hace nada". Keeping it in sync here, tied to the actual hour dropdown,
+  // fixes both that and the dropdown being visually present but inert.
+  useEffect(() => {
+    const date = new Date(`${dateISO}T00:00:00`);
+    date.setHours(selectedHour, 0, 0, 0);
+    setValue("startTimeISO", date.toISOString(), { shouldValidate: true });
+  }, [dateISO, selectedHour, setValue]);
 
   // Load staff pricing options whenever the selected service changes
   // (only staff with a price entry for this service can be picked — mirrors
@@ -85,14 +115,7 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
     setIsLoading(true);
     setError(null);
 
-    // Build the ISO timestamp: use the selected date + hour
-    const date = new Date(`${dateISO}T00:00:00`);
-    date.setHours(selectedHour, 0, 0, 0);
-
-    const result = await createAppointment({
-      ...data,
-      startTimeISO: date.toISOString(),
-    });
+    const result = await createAppointment(data);
 
     if (!result.ok) {
       setError(result.error);
@@ -183,7 +206,8 @@ function NewAppointmentModalContent({ dateISO }: NewAppointmentModalProps) {
               </Label>
               <select
                 id="startHour"
-                defaultValue={newModal.selectedHour || 9}
+                value={selectedHour}
+                onChange={(e) => setSelectedHour(parseInt(e.target.value, 10))}
                 disabled={isLoading}
                 className="w-full px-3 py-2 rounded-lg border border-color-line text-sm focus:border-color-accent-rose focus:outline-none"
               >
